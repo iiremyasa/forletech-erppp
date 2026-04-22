@@ -394,9 +394,14 @@ elif page == ":material/request_quote: Harcama Taleplerim":
                 st.success("Talebiniz yönetime iletildi.")
                 st.rerun()
                 
-    df_talep_kisisel = conn.query("SELECT tarih, tutar, aciklama, dosya_adi, durum FROM harcama_talepleri WHERE personel = :p ORDER BY id DESC", params={"p":st.session_state.user_name}, ttl=0)
+    df_talep_kisisel = conn.query("SELECT id, tarih, tutar, aciklama, dosya_adi, durum FROM harcama_talepleri WHERE personel = :p ORDER BY id DESC", params={"p":st.session_state.user_name}, ttl=0)
     st.markdown("### Geçmiş Taleplerim")
     st.dataframe(df_talep_kisisel, use_container_width=True)
+
+    with st.expander(":material/delete: Hatalı Talebi Sil"):
+        sil_id = st.number_input("Silinecek Talep ID:", min_value=0, step=1, key="s_talep")
+        if st.button("Sil", key="b_talep") and sil_id > 0:
+            if sil_kayit("harcama_talepleri", sil_id): st.rerun()
 
 elif page == ":material/receipt_long: Masraf Onay Paneli":
     st.markdown("<div class='page-header'><h1>Yönetici: Personel Masraf Onayları</h1></div>", unsafe_allow_html=True)
@@ -411,10 +416,10 @@ elif page == ":material/receipt_long: Masraf Onay Paneli":
                 s.execute(text("UPDATE harcama_talepleri SET durum = :d WHERE id = :id"), {"d": islem_durum, "id": islem_id})
                 if islem_durum == "Onaylandı":
                     talep_veri = conn.query("SELECT * FROM harcama_talepleri WHERE id = :id", params={"id": islem_id}).iloc[0]
-                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, aciklama, giren) VALUES (:t, 'Diğer', :tu, :a, :g)"),
-                              {"t": talep_veri['tarih'], "tu": talep_veri['tutar'], "a": f"Personel Masrafı: {talep_veri['personel']} - {talep_veri['aciklama']}", "g": "Sistem (Onaylanan)"})
+                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, aciklama, giren) VALUES (:t, 'Diğer (Personel)', :tu, :a, :g)"),
+                              {"t": talep_veri['tarih'], "tu": talep_veri['tutar'], "a": f"{talep_veri['personel']} - {talep_veri['aciklama']}", "g": "Sistem (Onaylanan)"})
                 s.commit()
-            st.success(f"Talep {islem_durum}.")
+            st.success(f"Talep {islem_durum}. Onaylandıysa otomatik olarak finans tablosuna işlendi.")
             st.rerun()
 
 elif page == ":material/assignment: Proje & Görevler":
@@ -446,15 +451,66 @@ elif page == ":material/groups: İnsan Kaynakları":
     ik_tab1, ik_tab2 = st.tabs(["Kurumsal Kadro", "İzin Yönetimi"])
     
     with ik_tab1:
+        with st.expander(":material/person_add: Yeni Personel Girişi"):
+            with st.form("per_form"):
+                p1, p2 = st.columns(2)
+                with p1:
+                    per_isim = st.text_input("Tam Adı")
+                    per_email = st.text_input("Kurumsal E-posta")
+                    per_tel = st.text_input("İletişim Numarası")
+                with p2:
+                    per_poz = st.text_input("Unvan / Pozisyon")
+                    per_dep = st.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
+                    per_basl = st.date_input("İşe Başlama Tarihi")
+                per_not = st.text_area("Özlük Notları")
+                if st.form_submit_button("Personeli Kaydet"):
+                    with conn.session as s:
+                        s.execute(text("INSERT INTO personel (isim, email, pozisyon, departman, ise_baslama, telefon, notlar) VALUES (:i, :e, :p, :d, :b, :t, :n)"), 
+                                  {"i":per_isim, "e":per_email, "p":per_poz, "d":per_dep, "b":per_basl.strftime("%d-%m-%Y"), "t":per_tel, "n":per_not})
+                        s.commit()
+                    st.success("Personel eklendi.")
+                    st.rerun()
+                    
         df_per = conn.query("SELECT id, isim, email, telefon, pozisyon, departman, ise_baslama FROM personel ORDER BY id DESC", ttl=0)
         df_per.columns = ["ID", "İsim Soyisim", "E-posta", "Telefon", "Unvan", "Departman", "Başlangıç"]
         st.dataframe(df_per, use_container_width=True)
         st.download_button(":material/download: Kadro Raporunu İndir", excel_export(df_per), "ForleAI_IK.xlsx")
+        
+        with st.expander(":material/delete: Personel Kaydını Sil"):
+            sil_id = st.number_input("Silinecek Personel ID:", min_value=0, step=1, key="sil_per")
+            if st.button("Sil", key="btn_sil_per") and sil_id > 0:
+                if sil_kayit("personel", sil_id): st.rerun()
 
     with ik_tab2:
+        with st.expander(":material/flight_takeoff: İzin Talebi Oluştur"):
+            with st.form("izin_form"):
+                i1, i2 = st.columns(2)
+                with i1:
+                    iz_per = st.text_input("Talep Eden Personel")
+                    iz_tur = st.selectbox("İzin Kategorisi", ["Yıllık","Mazeret","Sağlık","Ücretsiz"])
+                with i2:
+                    iz_bas = st.date_input("Başlangıç Tarihi")
+                    iz_bit = st.date_input("Bitiş Tarihi")
+                if st.form_submit_button("Talebi İlet"):
+                    gun = (iz_bit - iz_bas).days + 1
+                    if gun <= 0: st.error("Geçersiz tarih aralığı.")
+                    else:
+                        with conn.session as s:
+                            s.execute(text("INSERT INTO izinler (personel_adi, izin_turu, baslangic, bitis, gun_sayisi, talep_eden) VALUES (:pa, :it, :ba, :bi, :gs, :te)"), 
+                                      {"pa":iz_per, "it":iz_tur, "ba":iz_bas.strftime("%d-%m-%Y"), "bi":iz_bit.strftime("%d-%m-%Y"), "gs":gun, "te":st.session_state.user_name})
+                            s.execute(text("INSERT INTO bildirimler (tip, mesaj) VALUES ('İzin', :m)"), {"m": f"Personel {iz_per}, {gun} günlük {iz_tur} izni talep etti."})
+                            s.commit()
+                        st.success("İzin talebi onaya sunuldu ve yöneticilere bildirildi.")
+                        st.rerun()
+                        
         df_iz = conn.query("SELECT id, personel_adi, izin_turu, baslangic, bitis, gun_sayisi, durum FROM izinler ORDER BY id DESC", ttl=0)
         df_iz.columns = ["ID", "Personel", "Kategori", "Başlangıç", "Bitiş", "Süre (Gün)", "Onay Durumu"]
         st.dataframe(df_iz, use_container_width=True)
+
+        with st.expander(":material/delete: Hatalı İzin Kaydını Sil"):
+            sil_id = st.number_input("Silinecek İzin ID:", min_value=0, step=1, key="sil_izin")
+            if st.button("Sil", key="btn_sil_izin") and sil_id > 0:
+                if sil_kayit("izinler", sil_id): st.rerun()
 
 elif page == ":material/admin_panel_settings: Sistem Logları":
     st.markdown("<div class='page-header'><h1>Sistem Güvenliği ve Denetim Logları</h1></div>", unsafe_allow_html=True)
