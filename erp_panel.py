@@ -19,10 +19,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. VERİTABANI BAĞLANTISI (POSTGRESQL) ---
+# --- 1. VERİTABANI BAĞLANTISI VE OTOMATİK GÜNCELLEME (MIGRATION) ---
 try:
     conn = st.connection("postgresql", type="sql")
     with conn.session as s:
+        # 1. Temel Tablolar
         s.execute(text("""
             CREATE TABLE IF NOT EXISTS kullanicilar (id SERIAL PRIMARY KEY, email TEXT UNIQUE, sifre TEXT, isim TEXT, rol TEXT DEFAULT 'Kullanici');
             CREATE TABLE IF NOT EXISTS parcalar (id SERIAL PRIMARY KEY, varlik_etiketi TEXT, kayit_tarihi TEXT, model TEXT, durum TEXT, seri_no TEXT, durum_notu TEXT, yazilim_versiyonu TEXT, bagli_cihaz TEXT, ekleyen TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -34,6 +35,17 @@ try:
             CREATE TABLE IF NOT EXISTS izinler (id SERIAL PRIMARY KEY, personel_adi TEXT, izin_turu TEXT, baslangic TEXT, bitis TEXT, gun_sayisi FLOAT, durum TEXT DEFAULT 'Bekliyor', talep_eden TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, kullanici TEXT, aksiyon TEXT, detay TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
         """))
+        
+        # 2. Kasa Onarımı: Eski veritabanına eksik kolonları ekliyoruz (Senin aldığın hatayı çözen kısım)
+        onarımlar = [
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS yazilim_versiyonu TEXT;",
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS bagli_cihaz TEXT;",
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS durum_notu TEXT;"
+        ]
+        for onar in onarımlar:
+            try: s.execute(text(onar))
+            except: pass
+
         # Varsayılan Admin
         pw = hashlib.sha256("admin123".encode()).hexdigest()
         s.execute(text("INSERT INTO kullanicilar (email, sifre, isim, rol) VALUES ('admin@forleai.com', :p, 'Sistem Yöneticisi', 'Admin') ON CONFLICT DO NOTHING"), {"p": pw})
@@ -106,9 +118,6 @@ if page == "Ana Sayfa":
     c3.metric("Açık Görev", len(conn.query("SELECT id FROM gorevler WHERE durum != 'Tamamlandı'")))
     h_toplam = conn.query("SELECT SUM(tutar) as t FROM harcamalar").iloc[0]['t'] or 0
     c4.metric("Toplam Bütçe", f"{h_toplam:,.0f} ₺")
-    
-    st.markdown("### Son Harcamalar")
-    st.dataframe(conn.query("SELECT tarih, kategori, tutar, giren FROM harcamalar ORDER BY id DESC LIMIT 5"), use_container_width=True)
 
 elif page == "🔬 NIR Ar-Ge Modülü":
     st.title("🔬 NIR Projesi Ar-Ge Takibi")
@@ -131,8 +140,9 @@ elif page == "🔬 NIR Ar-Ge Modülü":
                 st.success("NIR Ar-Ge verisi kaydedildi.")
                 st.rerun()
     df_nir = conn.query("SELECT demo_tarihi, cihaz_versiyonu, sponsorluk_durumu, test_sonucu, notlar, ekleyen FROM nir_projesi ORDER BY id DESC")
-    st.dataframe(df_nir, use_container_width=True)
     if not df_nir.empty:
+        df_nir.columns = ["Demo Tarihi", "Cihaz Versiyonu", "Durum", "Test Sonucu", "Notlar", "Ekleyen"]
+        st.dataframe(df_nir, use_container_width=True)
         st.download_button("Excel Çıktısı Al", excel_export(df_nir), "forletech_nir_arge.xlsx")
 
 elif page == "⚙️ Parça Yönetimi":
@@ -159,9 +169,10 @@ elif page == "⚙️ Parça Yönetimi":
                 st.success("Eklendi")
                 st.rerun()
     df_p = conn.query("SELECT varlik_etiketi, kayit_tarihi, model, durum, seri_no, durum_notu, yazilim_versiyonu, bagli_cihaz FROM parcalar ORDER BY id DESC")
-    st.dataframe(df_p, use_container_width=True)
     if not df_p.empty:
-        st.download_button("Parça Listesi Excel İndir", excel_export(df_p), "forletech_parca_listesi.xlsx")
+        df_p.columns = ["Varlık Etiketi", "Kayıt Tarihi", "Model", "Durum", "Seri No", "Durum Notu", "Yazılım Versiyonu", "Bağlı Cihaz"]
+        st.dataframe(df_p, use_container_width=True)
+        st.download_button("Parça Listesi Excel İndir", excel_export(df_p), "forletech_parcalar.xlsx")
 
 elif page == "📱 Cihaz Yönetimi":
     st.title("📱 Cihaz Montaj ve Varlık Yönetimi")
@@ -187,9 +198,10 @@ elif page == "📱 Cihaz Yönetimi":
                 st.success("Cihaz başarıyla eklendi.")
                 st.rerun()
     df_c = conn.query("SELECT cihaz_adi, ip, model, takili_sensor_seri, anakart_seri, durum, seri_no, notlar, ekleyen FROM cihazlar ORDER BY id DESC")
-    st.dataframe(df_c, use_container_width=True)
     if not df_c.empty:
-        st.download_button("Cihaz Listesi Excel İndir", excel_export(df_c), "forletech_cihaz_listesi.xlsx")
+        df_c.columns = ["Cihaz Adı", "IP Adresi", "Model", "Sensör Seri No", "Anakart Seri No", "Durum", "Cihaz Seri No", "Notlar", "Ekleyen Kişi"]
+        st.dataframe(df_c, use_container_width=True)
+        st.download_button("Cihaz Listesi Excel İndir", excel_export(df_c), "forletech_cihazlar.xlsx")
 
 elif page == "💰 Bütçe & Harcamalar":
     st.title("💰 Bütçe & Harcamalar")
@@ -207,9 +219,10 @@ elif page == "💰 Bütçe & Harcamalar":
                 st.success("Harcama Kaydedildi")
                 st.rerun()
     df_h = conn.query("SELECT tarih, kategori, tutar, fatura_no, aciklama, giren FROM harcamalar ORDER BY id DESC")
-    st.dataframe(df_h, use_container_width=True)
     if not df_h.empty:
-        st.download_button("Harcama Raporu Excel İndir", excel_export(df_h), "forletech_butce_raporu.xlsx")
+        df_h.columns = ["Tarih", "Kategori", "Tutar (TL)", "Fatura No", "Açıklama", "Ekleyen Kişi"]
+        st.dataframe(df_h, use_container_width=True)
+        st.download_button("Harcama Raporu Excel İndir", excel_export(df_h), "forletech_harcamalar.xlsx")
 
 elif page == "📋 Proje & Görevler":
     st.title("📋 Proje & Görev Takibi")
@@ -234,8 +247,9 @@ elif page == "📋 Proje & Görevler":
                 st.success("Görev başarıyla eklendi.")
                 st.rerun()
     df_g = conn.query("SELECT baslik, proje, atanan, oncelik, durum, son_tarih, aciklama, olusturan FROM gorevler ORDER BY id DESC")
-    st.dataframe(df_g, use_container_width=True)
     if not df_g.empty:
+        df_g.columns = ["Başlık", "Proje", "Atanan Kişi", "Öncelik", "Durum", "Son Tarih", "Açıklama", "Oluşturan"]
+        st.dataframe(df_g, use_container_width=True)
         st.download_button("Görevler Excel İndir", excel_export(df_g), "forletech_gorevler.xlsx")
 
 elif page == "👥 İnsan Kaynakları":
@@ -263,8 +277,9 @@ elif page == "👥 İnsan Kaynakları":
                     st.success("Personel eklendi.")
                     st.rerun()
         df_per = conn.query("SELECT isim, email, telefon, pozisyon, departman, ise_baslama, notlar FROM personel ORDER BY id DESC")
-        st.dataframe(df_per, use_container_width=True)
         if not df_per.empty:
+            df_per.columns = ["İsim", "E-posta", "Telefon", "Pozisyon", "Departman", "İşe Başlama", "Notlar"]
+            st.dataframe(df_per, use_container_width=True)
             st.download_button("Personel Listesi Excel İndir", excel_export(df_per), "forletech_personel.xlsx")
         
     with ik_tab2:
@@ -289,16 +304,18 @@ elif page == "👥 İnsan Kaynakları":
                         st.success("Talep oluşturuldu.")
                         st.rerun()
         df_iz = conn.query("SELECT personel_adi, izin_turu, baslangic, bitis, gun_sayisi, durum, talep_eden FROM izinler ORDER BY id DESC")
-        st.dataframe(df_iz, use_container_width=True)
         if not df_iz.empty:
+            df_iz.columns = ["Personel", "İzin Türü", "Başlangıç", "Bitiş", "Gün Sayısı", "Durum", "Talep Eden"]
+            st.dataframe(df_iz, use_container_width=True)
             st.download_button("İzin Talepleri Excel İndir", excel_export(df_iz), "forletech_izinler.xlsx")
 
 elif page == "🛡️ Audit Log":
     st.title("🛡️ Sistem İşlem Geçmişi")
     if st.session_state.user_rol == "Admin":
         df_log = conn.query("SELECT created_at, kullanici, aksiyon, detay FROM audit_log ORDER BY id DESC")
-        st.dataframe(df_log, use_container_width=True)
         if not df_log.empty:
+            df_log.columns = ["Tarih ve Saat", "Kullanıcı", "Aksiyon", "Detaylar"]
+            st.dataframe(df_log, use_container_width=True)
             st.download_button("Log Kayıtları Excel İndir", excel_export(df_log), "forletech_audit_log.xlsx")
     else: 
         st.warning("Bu sayfaya sadece Admin yetkisine sahip kullanıcılar erişebilir.")
