@@ -13,7 +13,7 @@ if 'harcamalar' not in st.session_state: st.session_state.harcamalar = []
 # Dinamik Kullanıcı Veritabanı (İlk açılışta boş kalmaması için bir yönetici hesabı ekliyoruz)
 if 'kullanici_db' not in st.session_state:
     st.session_state.kullanici_db = {
-        "irem.yasa@forleai.com": {"sifre": "392682", "isim": "Sistem Yöneticisi"}
+        "admin@forleai.com": {"sifre": "admin123", "isim": "Sistem Yöneticisi"}
     }
 
 # --- 2. GİRİŞ VE KAYIT EKRANI ---
@@ -95,4 +95,59 @@ elif page == "⚙️ Parça Listesi":
                 p_durum = st.selectbox("Durum", ["Aktif", "Arızalı", "Depoda"])
             with c2:
                 p_tarih = st.date_input("Kayıt Tarihi", datetime.date.today())
-                p_notlar =
+                p_notlar = st.text_area("Durum Notları")
+            if st.form_submit_button("Parçayı Kaydet"):
+                st.session_state.parca_listesi.append({"Etiket": p_etiket, "Durum": p_durum, "Tarih": p_tarih.strftime("%d-%m-%Y"), "Notlar": p_notlar})
+                st.success("Eklendi!")
+    st.write("---")
+    st.write("### 📋 Güncel Parça Listesi")
+    if st.session_state.parca_listesi:
+        st.data_editor(pd.DataFrame(st.session_state.parca_listesi), use_container_width=True, num_rows="dynamic")
+
+elif page == "📱 Cihaz Listesi":
+    st.subheader("📱 Cihaz Montaj ve Varlık Yönetimi")
+    with st.expander("➕ Yeni Cihaz Kaydet", expanded=True):
+        with st.form("cihaz_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                d_adi = st.text_input("Cihaz Adı")
+                d_seri = st.text_input("Cihaz Seri No")
+            with c2:
+                d_durum = st.selectbox("Durum", ["Aktif", "Testte", "Bakımda"])
+                d_not = st.text_area("Notlar")
+            if st.form_submit_button("Cihazı Kaydet"):
+                st.session_state.cihaz_listesi.append({"Cihaz Adı": d_adi, "Seri No": d_seri, "Durum": d_durum, "Not": d_not})
+                st.success("Eklendi!")
+    st.write("---")
+    st.write("### 🗄️ FORLE TECH Cihaz Envanteri")
+    if st.session_state.cihaz_listesi:
+        st.data_editor(pd.DataFrame(st.session_state.cihaz_listesi), use_container_width=True, num_rows="dynamic")
+
+elif page == "💰 Bütçe & Harcamalar":
+    st.subheader("💰 Kurumsal Harcama Takibi")
+    with st.expander("➕ Yeni Harcama Fişi Gir", expanded=True):
+        with st.form("harcama_formu"):
+            h1, h2, h3 = st.columns(3)
+            with h1:
+                h_tarih = st.date_input("Harcama Tarihi", datetime.date.today())
+                h_kategori = st.selectbox("Kategori", ["Ar-Ge Alımı", "Ofis Gideri", "Seyahat", "Maaş", "Diğer"])
+            with h2:
+                h_tutar = st.number_input("Tutar (TL)", min_value=0.0, step=100.0)
+                h_fatura = st.text_input("Fatura/Fiş No")
+            with h3:
+                h_aciklama = st.text_area("Harcama Açıklaması")
+            
+            if st.form_submit_button("Harcamayı Sisteme İşle"):
+                st.session_state.harcamalar.append({
+                    "Tarih": h_tarih.strftime("%d-%m-%Y"), 
+                    "Kategori": h_kategori, 
+                    "Tutar (TL)": h_tutar, 
+                    "Fatura No": h_fatura, 
+                    "Açıklama": h_aciklama,
+                    "Giren Kişi": st.session_state.user_name # Harcamayı kimin girdiğini de kaydediyoruz!
+                })
+                st.success("Harcama başarıyla eklendi!")
+
+    st.write("---")
+    st.write("### 📊 Tüm Harcamalar Listesi")
+    if st.session_state.harcamalar:
