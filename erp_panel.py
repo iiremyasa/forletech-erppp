@@ -10,7 +10,6 @@ if 'parca_listesi' not in st.session_state: st.session_state.parca_listesi = []
 if 'cihaz_listesi' not in st.session_state: st.session_state.cihaz_listesi = []
 if 'harcamalar' not in st.session_state: st.session_state.harcamalar = []
 
-# Dinamik Kullanıcı Veritabanı (İlk açılışta boş kalmaması için bir yönetici hesabı ekliyoruz)
 if 'kullanici_db' not in st.session_state:
     st.session_state.kullanici_db = {
         "admin@forleai.com": {"sifre": "admin123", "isim": "Sistem Yöneticisi"}
@@ -23,10 +22,8 @@ if not st.session_state.authenticated:
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Ekranı Giriş Yap ve Kayıt Ol olarak iki sekmeye ayırıyoruz
         tab_giris, tab_kayit = st.tabs(["🔐 Giriş Yap", "📝 Yeni Kayıt Oluştur"])
         
-        # --- GİRİŞ YAP SEKME ---
         with tab_giris:
             with st.form("giris_formu"):
                 login_email = st.text_input("Kurumsal E-posta").strip().lower()
@@ -41,7 +38,6 @@ if not st.session_state.authenticated:
                     else:
                         st.error("Hatalı e-posta veya şifre!")
 
-        # --- YENİ KAYIT OL SEKME ---
         with tab_kayit:
             with st.form("kayit_formu"):
                 kayit_isim = st.text_input("Adınız Soyadınız").strip()
@@ -59,14 +55,9 @@ if not st.session_state.authenticated:
                     elif kayit_email in st.session_state.kullanici_db:
                         st.warning("Bu e-posta adresi sistemde zaten kayıtlı!")
                     else:
-                        # Kullanıcıyı hafızadaki veritabanına ekle
                         st.session_state.kullanici_db[kayit_email] = {"sifre": kayit_sifre, "isim": kayit_isim}
                         st.success(f"Kayıt başarılı, aramıza hoş geldin {kayit_isim}! Artık 'Giriş Yap' sekmesinden girebilirsin.")
     st.stop()
-
-# =========================================================================
-# --- ANA SİSTEM (GİRİŞ YAPILDIKTAN SONRA) ---
-# =========================================================================
 
 # --- 3. YAN MENÜ (SIDEBAR) ---
 st.sidebar.title("FORLE TECH ERP")
@@ -139,15 +130,4 @@ elif page == "💰 Bütçe & Harcamalar":
             
             if st.form_submit_button("Harcamayı Sisteme İşle"):
                 st.session_state.harcamalar.append({
-                    "Tarih": h_tarih.strftime("%d-%m-%Y"), 
-                    "Kategori": h_kategori, 
-                    "Tutar (TL)": h_tutar, 
-                    "Fatura No": h_fatura, 
-                    "Açıklama": h_aciklama,
-                    "Giren Kişi": st.session_state.user_name # Harcamayı kimin girdiğini de kaydediyoruz!
-                })
-                st.success("Harcama başarıyla eklendi!")
-
-    st.write("---")
-    st.write("### 📊 Tüm Harcamalar Listesi")
-    if st.session_state.harcamalar:
+                    "Tarih": h_tarih.strftime("%d
