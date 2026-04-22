@@ -5,10 +5,14 @@ import datetime
 st.set_page_config(page_title="FORLE TECH Portal", layout="wide")
 
 # --- 1. SİSTEM HAFIZASINI BAŞLATMA ---
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if 'parca_listesi' not in st.session_state: st.session_state.parca_listesi = []
-if 'cihaz_listesi' not in st.session_state: st.session_state.cihaz_listesi = []
-if 'harcamalar' not in st.session_state: st.session_state.harcamalar = []
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'parca_listesi' not in st.session_state:
+    st.session_state.parca_listesi = []
+if 'cihaz_listesi' not in st.session_state:
+    st.session_state.cihaz_listesi = []
+if 'harcamalar' not in st.session_state:
+    st.session_state.harcamalar = []
 
 if 'kullanici_db' not in st.session_state:
     st.session_state.kullanici_db = {
@@ -19,16 +23,16 @@ if 'kullanici_db' not in st.session_state:
 if not st.session_state.authenticated:
     st.markdown("<h1 style='text-align: center; color:#2c3e50;'>FORLE TECH</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>Kurumsal Portal</h3>", unsafe_allow_html=True)
-    
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         tab_giris, tab_kayit = st.tabs(["🔐 Giriş Yap", "📝 Yeni Kayıt Oluştur"])
-        
+
         with tab_giris:
             with st.form("giris_formu"):
                 login_email = st.text_input("Kurumsal E-posta").strip().lower()
                 login_password = st.text_input("Şifre", type="password").strip()
-                
+
                 if st.form_submit_button("Sisteme Giriş Yap"):
                     if login_email in st.session_state.kullanici_db and st.session_state.kullanici_db[login_email]["sifre"] == login_password:
                         st.session_state.authenticated = True
@@ -44,7 +48,7 @@ if not st.session_state.authenticated:
                 kayit_email = st.text_input("Yeni E-posta Adresiniz (@forleai.com)").strip().lower()
                 kayit_sifre = st.text_input("Yeni Şifre Belirleyin", type="password").strip()
                 kayit_sifre_tekrar = st.text_input("Şifreyi Tekrar Girin", type="password").strip()
-                
+
                 if st.form_submit_button("Kayıt Ol"):
                     if not kayit_email.endswith("@forleai.com"):
                         st.error("Sadece @forleai.com uzantılı şirket personeli kayıt olabilir!")
@@ -56,12 +60,12 @@ if not st.session_state.authenticated:
                         st.warning("Bu e-posta adresi sistemde zaten kayıtlı!")
                     else:
                         st.session_state.kullanici_db[kayit_email] = {"sifre": kayit_sifre, "isim": kayit_isim}
-                        st.success(f"Kayıt başarılı, aramıza hoş geldin {kayit_isim}! Artık 'Giriş Yap' sekmesinden girebilirsin.")
+                        st.success("Kayıt başarılı, aramıza hoş geldin " + kayit_isim + "! Artık 'Giriş Yap' sekmesinden girebilirsin.")
     st.stop()
 
 # --- 3. YAN MENÜ (SIDEBAR) ---
 st.sidebar.title("FORLE TECH ERP")
-st.sidebar.write(f"👤 **Hoş Geldin, {st.session_state.user_name}**")
+st.sidebar.write("👤 **Hoş Geldin, " + st.session_state.user_name + "**")
 st.sidebar.write("---")
 
 page = st.sidebar.radio("Sayfa Seçin:", ["🏠 Ana Sayfa", "⚙️ Parça Listesi", "📱 Cihaz Listesi", "💰 Bütçe & Harcamalar"])
@@ -88,7 +92,13 @@ elif page == "⚙️ Parça Listesi":
                 p_tarih = st.date_input("Kayıt Tarihi", datetime.date.today())
                 p_notlar = st.text_area("Durum Notları")
             if st.form_submit_button("Parçayı Kaydet"):
-                st.session_state.parca_listesi.append({"Etiket": p_etiket, "Durum": p_durum, "Tarih": p_tarih.strftime("%d-%m-%Y"), "Notlar": p_notlar})
+                tarih_str = p_tarih.strftime("%d-%m-%Y")
+                st.session_state.parca_listesi.append({
+                    "Etiket": p_etiket,
+                    "Durum": p_durum,
+                    "Tarih": tarih_str,
+                    "Notlar": p_notlar
+                })
                 st.success("Eklendi!")
     st.write("---")
     st.write("### 📋 Güncel Parça Listesi")
@@ -107,7 +117,12 @@ elif page == "📱 Cihaz Listesi":
                 d_durum = st.selectbox("Durum", ["Aktif", "Testte", "Bakımda"])
                 d_not = st.text_area("Notlar")
             if st.form_submit_button("Cihazı Kaydet"):
-                st.session_state.cihaz_listesi.append({"Cihaz Adı": d_adi, "Seri No": d_seri, "Durum": d_durum, "Not": d_not})
+                st.session_state.cihaz_listesi.append({
+                    "Cihaz Adı": d_adi,
+                    "Seri No": d_seri,
+                    "Durum": d_durum,
+                    "Not": d_not
+                })
                 st.success("Eklendi!")
     st.write("---")
     st.write("### 🗄️ FORLE TECH Cihaz Envanteri")
@@ -127,7 +142,26 @@ elif page == "💰 Bütçe & Harcamalar":
                 h_fatura = st.text_input("Fatura/Fiş No")
             with h3:
                 h_aciklama = st.text_area("Harcama Açıklaması")
-            
+
             if st.form_submit_button("Harcamayı Sisteme İşle"):
+                tarih_str = h_tarih.strftime("%d-%m-%Y")
                 st.session_state.harcamalar.append({
-                    "Tarih": h_tarih.strftime("%d
+                    "Tarih": tarih_str,
+                    "Kategori": h_kategori,
+                    "Tutar (TL)": h_tutar,
+                    "Fatura No": h_fatura,
+                    "Açıklama": h_aciklama,
+                    "Giren Kişi": st.session_state.user_name
+                })
+                st.success("Harcama başarıyla eklendi!")
+
+    st.write("---")
+    st.write("### 📊 Tüm Harcamalar Listesi")
+    if st.session_state.harcamalar:
+        df_harcamalar = pd.DataFrame(st.session_state.harcamalar)
+        st.data_editor(df_harcamalar, use_container_width=True, num_rows="dynamic")
+
+        toplam = df_harcamalar["Tutar (TL)"].sum()
+        st.metric(label="Toplam Kayıtlı Harcama", value=f"{toplam:,.2f} TL")
+    else:
+        st.info("Henüz sisteme işlenmiş bir harcama bulunmuyor.")
