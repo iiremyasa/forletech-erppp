@@ -60,11 +60,17 @@ try:
             CREATE TABLE IF NOT EXISTS bildirimler (id SERIAL PRIMARY KEY, tip TEXT, mesaj TEXT, okundu INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
         """))
         
+        # VERİTABANI ONARIMI: Eksik Sütunları Güvenle Ekle
         onarımlar = [
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS yazilim_versiyonu TEXT;",
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS bagli_cihaz TEXT;",
+            "ALTER TABLE parcalar ADD COLUMN IF NOT EXISTS durum_notu TEXT;",
             "ALTER TABLE harcamalar ADD COLUMN IF NOT EXISTS belge BYTEA;",
             "ALTER TABLE harcamalar ADD COLUMN IF NOT EXISTS dosya_adi TEXT;",
             "ALTER TABLE nir_projesi ADD COLUMN IF NOT EXISTS belge BYTEA;",
             "ALTER TABLE nir_projesi ADD COLUMN IF NOT EXISTS dosya_adi TEXT;",
+            "ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS dogrulandi INTEGER DEFAULT 1;",
+            "ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS kod TEXT;"
         ]
         for onar in onarımlar:
             try: s.execute(text(onar))
