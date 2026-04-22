@@ -14,39 +14,32 @@ KULLANICI_VERITABANI = {
     "irem.yasa@forleai.com": {"sifre": "392682", "isim": "Proje Yöneticisi"} # BURAYI KENDİ BİLGİLERİNLE DEĞİŞTİR
 }
 
-# --- 2. GÜVENLİK VE GİRİŞ KONTROLÜ ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
+# --- 2. GİRİŞ KONTROLÜ (Hata Payı Sıfırlanmış) ---
 if not st.session_state.authenticated:
-    st.markdown("<h1 style='text-align: center; color:#2c3e50;'>FORLE TECH</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>Kurumsal Portal Girişi</h3>", unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        with st.form("giris_formu"):
-            raw_email = st.text_input("Kurumsal E-posta (@forleai.com)")
-            email = raw_email.strip().lower() # Boşlukları temizle, küçük harfe çevir
-            password = st.text_input("Şifre", type="password")
-            
-            submit = st.form_submit_button("Sisteme Giriş Yap")
-            
-            if submit:
-                if not email.endswith("@forleai.com"):
-                    st.error("Hata: Sadece @forleai.com uzantılı mailler ile giriş yapılabilir!")
-                elif email in KULLANICI_VERITABANI and KULLANICI_VERITABANI[email]["sifre"] == password:
-                    # Giriş başarılı! Kullanıcı bilgilerini hafızaya al.
+    with st.form("giris_formu"):
+        # strip() ile boşlukları siliyoruz, lower() ile her şeyi küçük harf yapıyoruz
+        input_email = st.text_input("E-posta").strip().lower()
+        input_password = st.text_input("Şifre", type="password").strip()
+        
+        if st.form_submit_button("Giriş Yap"):
+            # Kodun içindeki anahtarları da küçük harf yaparak kontrol ediyoruz
+            bulundu = False
+            for kayitli_mail, bilgiler in KULLANICI_VERITABANI.items():
+                if kayitli_mail.lower() == input_email and bilgiler["sifre"] == input_password:
                     st.session_state.authenticated = True
-                    st.session_state.user_email = email
-                    st.session_state.user_name = KULLANICI_VERITABANI[email]["isim"]
+                    st.session_state.user_name = bilgiler["isim"]
+                    st.session_state.user_email = input_email
+                    bulundu = True
                     st.rerun()
-                else:
-                    st.error("Sisteme kayıtlı böyle bir e-posta yok veya şifre yanlış!")
-    st.stop() # Giriş yapılmadıysa aşağıdaki kodları okumayı durdurur.
+            
+            if not bulundu:
+                st.error("Giriş başarısız! Lütfen bilgilerinizi kontrol edin.")
 
 # --- 3. HAFIZA BAŞLATMA (GİRİŞ YAPILDIKTAN SONRA) ---
 if 'parca_listesi' not in st.session_state: st.session_state.parca_listesi = []
 if 'cihaz_listesi' not in st.session_state: st.session_state.cihaz_listesi = []
+if 'harcamalar' not in st.session_state: st.session_state.harcamalar = []
+
 
 # --- 4. YAN MENÜ (SIDEBAR) ---
 st.sidebar.title("FORLE TECH ERP")
