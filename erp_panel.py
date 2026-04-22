@@ -145,3 +145,110 @@ elif page == "Audit Log":
     if st.session_state.user_rol == "Admin":
         st.dataframe(conn.query("SELECT created_at, kullanici, aksiyon, detay FROM audit_log ORDER BY id DESC"), use_container_width=True)
     else: st.warning("Yetkisiz erişim.")
+        elif page == "Cihaz Yönetimi":
+    st.title("📱 Cihaz Montaj ve Varlık Yönetimi")
+    with st.expander("➕ Yeni Cihaz Ekle"):
+        with st.form("cihaz_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                d_adi = st.text_input("Cihaz Adı")
+                d_model = st.text_input("Model")
+                d_seri = st.text_input("Seri No")
+                d_ip = st.text_input("IP Adresi")
+            with c2:
+                d_sensor = st.text_input("Takılı Sensör Seri No")
+                d_anakart = st.text_input("Anakart Seri No")
+                d_durum = st.selectbox("Durum", ["Aktif","Testte","Bakımda","Depoda"])
+                d_not = st.text_area("Notlar")
+            if st.form_submit_button("Cihazı Kaydet"):
+                with conn.session as s:
+                    s.execute(text("""
+                        INSERT INTO cihazlar (cihaz_adi, ip, model, takili_sensor_seri, anakart_seri, durum, seri_no, notlar, ekleyen)
+                        VALUES (:ca, :ip, :mo, :ts, :as, :du, :sn, :no, :ek)
+                    """), {"ca":d_adi, "ip":d_ip, "mo":d_model, "ts":d_sensor, "as":d_anakart, "du":d_durum, "sn":d_seri, "no":d_not, "ek":st.session_state.user_name})
+                    s.commit()
+                log_action(st.session_state.user_name, "Cihaz Eklendi", d_adi)
+                st.success("Cihaz başarıyla eklendi.")
+                st.rerun()
+    st.markdown("### 🗄️ Cihaz Envanteri")
+    st.dataframe(conn.query("SELECT * FROM cihazlar ORDER BY id DESC"), use_container_width=True)
+
+elif page == "Proje & Görevler":
+    st.title("📋 Proje & Görev Takibi")
+    with st.expander("➕ Yeni Görev Ekle"):
+        with st.form("gorev_form"):
+            g1, g2 = st.columns(2)
+            with g1:
+                g_baslik = st.text_input("Görev Başlığı")
+                g_proje = st.text_input("Proje Adı")
+                g_atanan = st.text_input("Atanan Kişi")
+            with g2:
+                g_oncelik = st.selectbox("Öncelik", ["Düşük","Orta","Yüksek","Kritik"])
+                g_durum = st.selectbox("Durum", ["Bekliyor","Devam Ediyor","İncelemede","Tamamlandı"])
+                g_tarih = st.date_input("Son Tarih", datetime.date.today())
+            g_acik = st.text_area("Açıklama")
+            if st.form_submit_button("Görev Ekle"):
+                with conn.session as s:
+                    s.execute(text("""
+                        INSERT INTO gorevler (baslik, aciklama, atanan, durum, oncelik, son_tarih, proje, olusturan)
+                        VALUES (:ba, :ac, :at, :du, :on, :st, :pr, :ol)
+                    """), {"ba":g_baslik, "ac":g_acik, "at":g_atanan, "du":g_durum, "on":g_oncelik, "st":g_tarih.strftime("%d-%m-%Y"), "pr":g_proje, "ol":st.session_state.user_name})
+                    s.commit()
+                log_action(st.session_state.user_name, "Görev Eklendi", g_baslik)
+                st.success("Görev başarıyla eklendi.")
+                st.rerun()
+    st.markdown("### 📌 Tüm Görevler")
+    st.dataframe(conn.query("SELECT * FROM gorevler ORDER BY id DESC"), use_container_width=True)
+
+elif page == "İnsan Kaynakları":
+    st.title("👥 İnsan Kaynakları ve İzin Yönetimi")
+    ik_tab1, ik_tab2 = st.tabs(["Personel Listesi", "İzin Talepleri"])
+    with ik_tab1:
+        with st.expander("➕ Yeni Personel Ekle"):
+            with st.form("per_form"):
+                p1, p2 = st.columns(2)
+                with p1:
+                    per_isim = st.text_input("Ad Soyad")
+                    per_email = st.text_input("E-posta")
+                    per_tel = st.text_input("Telefon")
+                with p2:
+                    per_poz = st.text_input("Pozisyon")
+                    per_dep = st.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
+                    per_basl = st.date_input("İşe Başlama", datetime.date.today())
+                per_not = st.text_area("Notlar")
+                if st.form_submit_button("Kaydet"):
+                    with conn.session as s:
+                        s.execute(text("""
+                            INSERT INTO personel (isim, email, pozisyon, departman, ise_baslama, telefon, notlar)
+                            VALUES (:i, :e, :p, :d, :b, :t, :n)
+                        """), {"i":per_isim, "e":per_email, "p":per_poz, "d":per_dep, "b":per_basl.strftime("%d-%m-%Y"), "t":per_tel, "n":per_not})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Personel Eklendi", per_isim)
+                    st.success("Personel eklendi.")
+                    st.rerun()
+        st.dataframe(conn.query("SELECT * FROM personel ORDER BY id DESC"), use_container_width=True)
+        
+    with ik_tab2:
+        with st.expander("✈️ Yeni İzin Talebi"):
+            with st.form("izin_form"):
+                i1, i2 = st.columns(2)
+                with i1:
+                    iz_per = text_input("Personel Adı")
+                    iz_tur = st.selectbox("İzin Türü", ["Yıllık","Mazeret","Hastalık","Ücretsiz"])
+                with i2:
+                    iz_bas = st.date_input("Başlangıç", datetime.date.today())
+                    iz_bit = st.date_input("Bitiş", datetime.date.today())
+                if st.form_submit_button("Talep Oluştur"):
+                    gun = (iz_bit - iz_bas).days + 1
+                    if gun <= 0: st.error("Bitiş tarihi başlangıçtan önce olamaz.")
+                    else:
+                        with conn.session as s:
+                            s.execute(text("""
+                                INSERT INTO izinler (personel_adi, izin_turu, baslangic, bitis, gun_sayisi, talep_eden)
+                                VALUES (:pa, :it, :ba, :bi, :gs, :te)
+                            """), {"pa":iz_per, "it":iz_tur, "ba":iz_bas.strftime("%d-%m-%Y"), "bi":iz_bit.strftime("%d-%m-%Y"), "gs":gun, "te":st.session_state.user_name})
+                            s.commit()
+                        log_action(st.session_state.user_name, "İzin Talebi", f"{iz_per} - {gun} gün")
+                        st.success("Talep oluşturuldu.")
+                        st.rerun()
+        st.dataframe(conn.query("SELECT * FROM izinler ORDER BY id DESC"), use_container_width=True)
