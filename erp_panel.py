@@ -125,27 +125,7 @@ elif page == "Parça Yönetimi":
                 st.rerun()
     st.dataframe(conn.query("SELECT * FROM parcalar ORDER BY id DESC"), use_container_width=True)
 
-elif page == "Bütçe & Harcamalar":
-    st.title("Bütçe Takibi")
-    with st.expander("Harcama Gir"):
-        with st.form("h"):
-            ta, ka, tu = st.date_input("Tarih"), st.selectbox("Kategori", ["Ar-Ge", "Ofis", "Seyahat"]), st.number_input("Tutar")
-            if st.form_submit_button("Kaydet"):
-                with conn.session as s:
-                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, giren) VALUES (:t, :k, :tu, :g)"), {"t":ta.strftime("%Y-%m-%d"), "k":ka, "tu":tu, "g":st.session_state.user_name})
-                    s.commit()
-                st.success("Harcama Kaydedildi")
-                st.rerun()
-    df_h = conn.query("SELECT * FROM harcamalar ORDER BY id DESC")
-    st.dataframe(df_h, use_container_width=True)
-    st.download_button("Excel Aktar", excel_export(df_h), "harcamalar.xlsx")
-
-elif page == "Audit Log":
-    st.title("İşlem Geçmişi")
-    if st.session_state.user_rol == "Admin":
-        st.dataframe(conn.query("SELECT created_at, kullanici, aksiyon, detay FROM audit_log ORDER BY id DESC"), use_container_width=True)
-    else: st.warning("Yetkisiz erişim.")
-        elif page == "Cihaz Yönetimi":
+elif page == "Cihaz Yönetimi":
     st.title("📱 Cihaz Montaj ve Varlık Yönetimi")
     with st.expander("➕ Yeni Cihaz Ekle"):
         with st.form("cihaz_form"):
@@ -172,6 +152,21 @@ elif page == "Audit Log":
                 st.rerun()
     st.markdown("### 🗄️ Cihaz Envanteri")
     st.dataframe(conn.query("SELECT * FROM cihazlar ORDER BY id DESC"), use_container_width=True)
+
+elif page == "Bütçe & Harcamalar":
+    st.title("Bütçe Takibi")
+    with st.expander("Harcama Gir"):
+        with st.form("h"):
+            ta, ka, tu = st.date_input("Tarih"), st.selectbox("Kategori", ["Ar-Ge", "Ofis", "Seyahat"]), st.number_input("Tutar")
+            if st.form_submit_button("Kaydet"):
+                with conn.session as s:
+                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, giren) VALUES (:t, :k, :tu, :g)"), {"t":ta.strftime("%Y-%m-%d"), "k":ka, "tu":tu, "g":st.session_state.user_name})
+                    s.commit()
+                st.success("Harcama Kaydedildi")
+                st.rerun()
+    df_h = conn.query("SELECT * FROM harcamalar ORDER BY id DESC")
+    st.dataframe(df_h, use_container_width=True)
+    st.download_button("Excel Aktar", excel_export(df_h), "harcamalar.xlsx")
 
 elif page == "Proje & Görevler":
     st.title("📋 Proje & Görev Takibi")
@@ -233,7 +228,7 @@ elif page == "İnsan Kaynakları":
             with st.form("izin_form"):
                 i1, i2 = st.columns(2)
                 with i1:
-                    iz_per = text_input("Personel Adı")
+                    iz_per = st.text_input("Personel Adı")
                     iz_tur = st.selectbox("İzin Türü", ["Yıllık","Mazeret","Hastalık","Ücretsiz"])
                 with i2:
                     iz_bas = st.date_input("Başlangıç", datetime.date.today())
@@ -252,3 +247,9 @@ elif page == "İnsan Kaynakları":
                         st.success("Talep oluşturuldu.")
                         st.rerun()
         st.dataframe(conn.query("SELECT * FROM izinler ORDER BY id DESC"), use_container_width=True)
+
+elif page == "Audit Log":
+    st.title("İşlem Geçmişi")
+    if st.session_state.user_rol == "Admin":
+        st.dataframe(conn.query("SELECT created_at, kullanici, aksiyon, detay FROM audit_log ORDER BY id DESC"), use_container_width=True)
+    else: st.warning("Yetkisiz erişim.")
