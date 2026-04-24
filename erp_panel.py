@@ -345,4 +345,256 @@ elif page == ":material/memory: Cihaz Yönetimi":
                 if st.form_submit_button("Cihazı Sisteme Kaydet"):
                     with conn.session as s:
                         s.execute(text("INSERT INTO cihazlar (cihaz_adi, ip, model, takili_sensor_seri, anakart_seri, durum, seri_no, notlar, ekleyen) VALUES (:ca, :ip, :mo, :ts, :as, :du, :sn, :no, :ek)"), 
-                                  {"ca":d_adi, "ip":d_ip, "mo":d_model, "ts":d_sensor, "as":
+                                  {"ca":d_adi, "ip":d_ip, "mo":d_model, "ts":d_sensor, "as":d_anakart, "du":d_durum, "sn":d_seri, "no":d_not, "ek":st.session_state.user_name})
+                        s.commit()
+                    st.success("Cihaz başarıyla tanımlandı.")
+                    st.rerun()
+    else:
+        st.info("💡 Sadece Yöneticiler ve Elektrik Elektronik Mühendisleri sisteme yeni cihaz ekleyebilir. Aşağıdan envanteri görüntüleyip Excel indirebilirsiniz.")
+                
+    df_c = conn.query("SELECT id, cihaz_adi, ip, model, takili_sensor_seri, anakart_seri, durum, seri_no, notlar FROM cihazlar ORDER BY id DESC", ttl=0)
+    df_c_export = df_c.copy()
+    df_c_export.columns = ["ID", "Cihaz", "IP", "Model", "Sensör", "Anakart", "Durum", "Seri No", "Notlar"]
+    st.dataframe(df_c, use_container_width=True)
+    st.download_button(":material/download: Excel İndir", excel_export(df_c_export), "ForleAI_Cihazlar.xlsx")
+
+    if st.session_state.user_rol in ["Admin", "Yönetici", "Elektrik Elektronik Mühendisi"]:
+        with st.expander(":material/delete: Kayıt Sil"):
+            sil_id = st.number_input("Silinecek ID:", min_value=0, step=1, key="s_c")
+            if st.button("Sil", key="b_c") and sil_id > 0:
+                if sil_kayit("cihazlar", sil_id): st.rerun()
+
+elif page == ":material/account_balance: Finans & Bütçe":
+    st.markdown("<div class='page-header'><h1>Muhasebe: Kurumsal Harcamalar</h1></div>", unsafe_allow_html=True)
+    with st.expander(":material/add: Fatura / Fiş İşle"):
+        with st.form("h_form"):
+            ta, ka, tu = st.date_input("Kayıt Tarihi"), st.selectbox("Gider Kalemi", ["Ar-Ge", "Ofis", "Seyahat", "Maaş", "Vergi", "İSG", "Mutfak", "Diğer"]), st.number_input("Tutar (TL)")
+            fn = st.text_input("Belge/Fiş No")
+            ac = st.text_area("İşlem Açıklaması")
+            belge = st.file_uploader("Fatura / Dekont Yükle", type=["pdf", "png", "jpg"])
+            if st.form_submit_button("Muhasebeye İşle"):
+                file_bytes = belge.read() if belge else None
+                file_name = belge.name if belge else None
+                with conn.session as s:
+                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, fatura_no, aciklama, belge, dosya_adi, giren) VALUES (:t, :k, :tu, :f, :a, :b, :dn, :g)"), 
+                              {"t":ta.strftime("%d-%m-%Y"), "k":ka, "tu":tu, "f":fn, "a":ac, "b":file_bytes, "dn":file_name, "g":st.session_state.user_name})
+                    s.commit()
+                st.success("Gider işlendi.")
+                st.rerun()
+                
+    df_h = conn.query("SELECT id, tarih, kategori, tutar, fatura_no, aciklama, dosya_adi, giren FROM harcamalar ORDER BY id DESC", ttl=0)
+    df_h_export = df_h.drop(columns=["dosya_adi"])
+    df_h_export.columns = ["ID", "Tarih", "Kategori", "Tutar", "Belge No", "Açıklama", "İşleyen"]
+    st.dataframe(df_h, use_container_width=True)
+    st.download_button(":material/download: Raporu İndir", excel_export(df_h_export), "ForleAI_Finans.xlsx")
+
+    with st.expander(":material/delete: Kayıt Sil"):
+        sil_id = st.number_input("Silinecek ID:", min_value=0, step=1, key="s_f")
+        if st.button("Sil", key="b_f") and sil_id > 0:
+            if sil_kayit("harcamalar", sil_id): st.rerun()
+
+elif page == ":material/request_quote: Harcama Taleplerim":
+    st.markdown("<div class='page-header'><h1>Çalışan Masraf Beyanı</h1></div>", unsafe_allow_html=True)
+    st.info("Kendi cebinizden yaptığınız kurumsal harcamaları buradan yönetime iletebilirsiniz.")
+    with st.form("talep_form"):
+        t_tar = st.date_input("Harcama Tarihi")
+        t_tut = st.number_input("Tutar (TL)", min_value=1.0)
+        t_ack = st.text_area("Harcama Açıklaması (Taksi, Yemek vb.)")
+        t_belge = st.file_uploader("Fiş / Fatura Fotoğrafı (Zorunlu)", type=["png", "jpg", "pdf"])
+        if st.form_submit_button("Onaya Gönder"):
+            if not t_belge: st.error("Lütfen harcamanın fişini/belgesini yükleyin.")
+            else:
+                fb = t_belge.read()
+                fn = t_belge.name
+                with conn.session as s:
+                    s.execute(text("INSERT INTO harcama_talepleri (personel, tarih, tutar, aciklama, belge, dosya_adi) VALUES (:p, :t, :tu, :a, :b, :dn)"),
+                              {"p":st.session_state.user_name, "t":t_tar.strftime("%d-%m-%Y"), "tu":t_tut, "a":t_ack, "b":fb, "dn":fn})
+                    s.execute(text("INSERT INTO bildirimler (tip, mesaj) VALUES ('Masraf', :m)"), {"m": f"{st.session_state.user_name}, {t_tut} TL masraf talebi girdi."})
+                    s.commit()
+                send_email_notification("admin@forleai.com", "Yeni Masraf Talebi", f"{st.session_state.user_name} adlı personel {t_tut} TL değerinde masraf girişi yapmıştır.")
+                st.success("Talebiniz yönetime iletildi.")
+                st.rerun()
+                
+    st.markdown("### Geçmiş Taleplerim")
+    df_talep_kisisel = conn.query("SELECT id, tarih, tutar, aciklama, dosya_adi, durum, dekont_adi FROM harcama_talepleri WHERE personel = :p ORDER BY id DESC", params={"p":st.session_state.user_name}, ttl=0)
+    st.dataframe(df_talep_kisisel, use_container_width=True)
+    st.download_button(":material/download: Masraflarımı Excel İndir", excel_export(df_talep_kisisel), "Benim_Masraflarim.xlsx")
+
+    with st.expander("👁️ Belge ve Dekont İndir/Görüntüle"):
+        g_id = st.number_input("Görüntülemek İstediğiniz Masrafın ID'si:", min_value=0, step=1, key="g_id_kisisel")
+        if g_id > 0:
+            doc = conn.query("SELECT belge, dosya_adi, dekont, dekont_adi FROM harcama_talepleri WHERE id = :id AND personel = :p", params={"id":g_id, "p":st.session_state.user_name})
+            if not doc.empty:
+                d1, d2 = st.columns(2)
+                with d1:
+                    if doc.iloc[0]['belge'] is not None:
+                        st.success("Senin Yüklediğin Fiş/Fatura:")
+                        st.download_button("Fişi İndir", data=doc.iloc[0]['belge'], file_name=doc.iloc[0]['dosya_adi'], key=f"f_ind_{g_id}")
+                with d2:
+                    if doc.iloc[0]['dekont'] is not None:
+                        st.info("Yönetimin Yüklediği Dekont:")
+                        st.download_button("Dekontu İndir", data=doc.iloc[0]['dekont'], file_name=doc.iloc[0]['dekont_adi'], key=f"d_ind_{g_id}")
+                    else: st.warning("Bu işlem için henüz dekont yüklenmemiş.")
+            else: st.error("Bu ID'ye ait masraf bulunamadı.")
+
+    with st.expander(":material/delete: Hatalı Talebi Sil"):
+        sil_id = st.number_input("Silinecek Talep ID:", min_value=0, step=1, key="s_talep")
+        if st.button("Sil", key="b_talep") and sil_id > 0:
+            if sil_kayit("harcama_talepleri", sil_id): st.rerun()
+
+elif page == ":material/receipt_long: Masraf Onay Paneli":
+    st.markdown("<div class='page-header'><h1>Yönetici: Personel Masraf Onayları</h1></div>", unsafe_allow_html=True)
+    df_talepler = conn.query("SELECT id, personel, tarih, tutar, aciklama, dosya_adi, durum, dekont_adi FROM harcama_talepleri ORDER BY id DESC", ttl=0)
+    st.dataframe(df_talepler, use_container_width=True)
+    st.download_button(":material/download: Tüm Masrafları Excel İndir", excel_export(df_talepler), "Tum_Personel_Masraflari.xlsx")
+
+    with st.expander("👁️ Personelin Fişini Görüntüle/İndir"):
+        g_id = st.number_input("İncelenecek Masraf ID'si:", min_value=0, step=1, key="g_id_yonetici")
+        if g_id > 0:
+            doc = conn.query("SELECT belge, dosya_adi FROM harcama_talepleri WHERE id = :id", params={"id":g_id})
+            if not doc.empty and doc.iloc[0]['belge'] is not None:
+                st.download_button("Personelin Yüklediği Fişi İndir", data=doc.iloc[0]['belge'], file_name=doc.iloc[0]['dosya_adi'], key=f"y_ind_{g_id}")
+
+    with st.expander("✅ Durum Güncelle & Dekont Yükle"):
+        with st.form("durum_form"):
+            islem_id = st.number_input("İşlem Yapılacak Talep ID", min_value=0, step=1)
+            islem_durum = st.selectbox("Karar", ["Onay Bekliyor", "Ödeme Bekliyor", "Onaylandı", "Reddedildi"])
+            dekont_file = st.file_uploader("Ödeme Dekontu Yükle (Eğer Onaylandı / Ödeme Yapıldıysa)", type=["pdf", "png", "jpg"])
+            
+            if st.form_submit_button("Uygula"):
+                if islem_id > 0:
+                    d_bytes = dekont_file.read() if dekont_file else None
+                    d_name = dekont_file.name if dekont_file else None
+                    with conn.session as s:
+                        if d_bytes:
+                            s.execute(text("UPDATE harcama_talepleri SET durum = :d, dekont = :db, dekont_adi = :dn WHERE id = :id"), {"d": islem_durum, "db": d_bytes, "dn": d_name, "id": islem_id})
+                        else:
+                            s.execute(text("UPDATE harcama_talepleri SET durum = :d WHERE id = :id"), {"d": islem_durum, "id": islem_id})
+                        
+                        if islem_durum == "Onaylandı":
+                            talep_veri = conn.query("SELECT * FROM harcama_talepleri WHERE id = :id", params={"id": islem_id}).iloc[0]
+                            s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, aciklama, giren) VALUES (:t, 'Diğer (Personel)', :tu, :a, :g)"),
+                                      {"t": talep_veri['tarih'], "tu": talep_veri['tutar'], "a": f"Personel Masrafı: {talep_veri['personel']} - {talep_veri['aciklama']}", "g": "Sistem (Otomatik)"})
+                    st.success(f"Talep {islem_durum} olarak güncellendi.")
+                    st.rerun()
+
+elif page == ":material/assignment: Proje & Görevler":
+    st.markdown("<div class='page-header'><h1>Operasyon: Proje & Görev Takibi</h1></div>", unsafe_allow_html=True)
+    with st.expander(":material/add: Yeni Görev Ataması"):
+        with st.form("gorev_form"):
+            g_baslik = st.text_input("Operasyon Başlığı")
+            g_atanan = st.text_input("Sorumlu Personel E-posta")
+            g_tarih = st.date_input("Termin Tarihi")
+            g_acik = st.text_area("Görev Detayları")
+            if st.form_submit_button("Görevi Ata"):
+                with conn.session as s:
+                    s.execute(text("INSERT INTO gorevler (baslik, aciklama, atanan, son_tarih, olusturan) VALUES (:ba, :ac, :at, :st, :ol)"), 
+                              {"ba":g_baslik, "ac":g_acik, "at":g_atanan, "st":g_tarih.strftime("%d-%m-%Y"), "ol":st.session_state.user_name})
+                    s.commit()
+                send_email_notification(g_atanan, "Yeni Görev Ataması", f"Size yeni bir görev atandı: {g_baslik}\nSon Tarih: {g_tarih}\nDetay: {g_acik}")
+                st.success("Görev atandı ve e-posta bildirimi gönderildi.")
+                st.rerun()
+    df_g = conn.query("SELECT id, baslik, atanan, durum, son_tarih, aciklama, olusturan FROM gorevler ORDER BY id DESC", ttl=0)
+    st.dataframe(df_g, use_container_width=True)
+
+    with st.expander(":material/delete: Kayıt Sil"):
+        sil_id = st.number_input("Silinecek ID:", min_value=0, step=1, key="s_g")
+        if st.button("Sil", key="b_g") and sil_id > 0:
+            if sil_kayit("gorevler", sil_id): st.rerun()
+
+elif page == ":material/groups: İnsan Kaynakları":
+    st.markdown("<div class='page-header'><h1>İnsan Kaynakları & Organizasyon</h1></div>", unsafe_allow_html=True)
+    
+    if st.session_state.user_rol == "Admin":
+        ik_tab1, ik_tab2, ik_tab3 = st.tabs(["Kurumsal Kadro", "İzin Yönetimi", "Sistem Yetkileri"])
+    else:
+        ik_tab1, ik_tab2 = st.tabs(["Kurumsal Kadro", "İzin Yönetimi"])
+    
+    with ik_tab1:
+        with st.expander(":material/person_add: Yeni Personel Girişi"):
+            with st.form("per_form"):
+                p1, p2 = st.columns(2)
+                with p1:
+                    per_isim = st.text_input("Tam Adı")
+                    per_email = st.text_input("Kurumsal E-posta")
+                    per_tel = st.text_input("İletişim Numarası")
+                with p2:
+                    per_poz = st.text_input("Unvan / Pozisyon")
+                    per_dep = st.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
+                    per_basl = st.date_input("İşe Başlama Tarihi")
+                per_not = st.text_area("Özlük Notları")
+                if st.form_submit_button("Personeli Kaydet"):
+                    with conn.session as s:
+                        s.execute(text("INSERT INTO personel (isim, email, pozisyon, departman, ise_baslama, telefon, notlar) VALUES (:i, :e, :p, :d, :b, :t, :n)"), 
+                                  {"i":per_isim, "e":per_email, "p":per_poz, "d":per_dep, "b":per_basl.strftime("%d-%m-%Y"), "t":per_tel, "n":per_not})
+                        s.commit()
+                    st.success("Personel eklendi.")
+                    st.rerun()
+                    
+        df_per = conn.query("SELECT id, isim, email, telefon, pozisyon, departman, ise_baslama FROM personel ORDER BY id DESC", ttl=0)
+        df_per.columns = ["ID", "İsim Soyisim", "E-posta", "Telefon", "Unvan", "Departman", "Başlangıç"]
+        st.dataframe(df_per, use_container_width=True)
+        st.download_button(":material/download: Kadro Raporunu İndir", excel_export(df_per), "ForleAI_IK.xlsx")
+        
+        with st.expander(":material/delete: Personel Kaydını Sil"):
+            sil_id = st.number_input("Silinecek Personel ID:", min_value=0, step=1, key="sil_per")
+            if st.button("Sil", key="btn_sil_per") and sil_id > 0:
+                if sil_kayit("personel", sil_id): st.rerun()
+
+    with ik_tab2:
+        with st.expander(":material/flight_takeoff: İzin Talebi Oluştur"):
+            with st.form("izin_form"):
+                i1, i2 = st.columns(2)
+                with i1:
+                    iz_per = st.text_input("Talep Eden Personel")
+                    iz_tur = st.selectbox("İzin Kategorisi", ["Yıllık","Mazeret","Sağlık","Ücretsiz"])
+                with i2:
+                    iz_bas = st.date_input("Başlangıç Tarihi")
+                    iz_bit = st.date_input("Bitiş Tarihi")
+                if st.form_submit_button("Talebi İlet"):
+                    gun = (iz_bit - iz_bas).days + 1
+                    if gun <= 0: st.error("Geçersiz tarih aralığı.")
+                    else:
+                        with conn.session as s:
+                            s.execute(text("INSERT INTO izinler (personel_adi, izin_turu, baslangic, bitis, gun_sayisi, talep_eden) VALUES (:pa, :it, :ba, :bi, :gs, :te)"), 
+                                      {"pa":iz_per, "it":iz_tur, "ba":iz_bas.strftime("%d-%m-%Y"), "bi":iz_bit.strftime("%d-%m-%Y"), "gs":gun, "te":st.session_state.user_name})
+                            s.execute(text("INSERT INTO bildirimler (tip, mesaj) VALUES ('İzin', :m)"), {"m": f"Personel {iz_per}, {gun} günlük {iz_tur} izni talep etti."})
+                            s.commit()
+                        st.success("İzin talebi onaya sunuldu ve yöneticilere bildirildi.")
+                        st.rerun()
+                        
+        df_iz = conn.query("SELECT id, personel_adi, izin_turu, baslangic, bitis, gun_sayisi, durum FROM izinler ORDER BY id DESC", ttl=0)
+        df_iz.columns = ["ID", "Personel", "Kategori", "Başlangıç", "Bitiş", "Süre (Gün)", "Onay Durumu"]
+        st.dataframe(df_iz, use_container_width=True)
+
+        with st.expander(":material/delete: Hatalı İzin Kaydını Sil"):
+            sil_id = st.number_input("Silinecek İzin ID:", min_value=0, step=1, key="sil_izin")
+            if st.button("Sil", key="btn_sil_izin") and sil_id > 0:
+                if sil_kayit("izinler", sil_id): st.rerun()
+                
+    if st.session_state.user_rol == "Admin":
+        with ik_tab3:
+            st.info("💡 Sisteme kayıt olan kullanıcıların yetkilerini (Elektrik Elektronik Mühendisi vb.) buradan belirleyebilirsiniz.")
+            df_yetki = conn.query("SELECT id, isim, email, rol, dogrulandi FROM kullanicilar ORDER BY id", ttl=0)
+            st.dataframe(df_yetki, use_container_width=True)
+            
+            y1, y2, y3 = st.columns(3)
+            with y1: 
+                y_id = st.number_input("Yetkisi Değişecek Kullanıcı ID", min_value=0, step=1)
+            with y2: 
+                y_rol = st.selectbox("Yeni Rol", ["Kullanici", "Elektrik Elektronik Mühendisi", "Yönetici", "Admin"])
+            with y3: 
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Yetkiyi Güncelle", use_container_width=True) and y_id > 0:
+                    with conn.session as s:
+                        s.execute(text("UPDATE kullanicilar SET rol = :r WHERE id = :id"), {"r":y_rol, "id":y_id})
+                        s.commit()
+                    st.success(f"Kullanıcı ID {y_id} rolü {y_rol} olarak güncellendi.")
+                    st.rerun()
+
+elif page == ":material/admin_panel_settings: Sistem Logları":
+    st.markdown("<div class='page-header'><h1>Sistem Güvenliği ve Denetim Logları</h1></div>", unsafe_allow_html=True)
+    df_log = conn.query("SELECT id, created_at, kullanici, aksiyon, detay FROM audit_log ORDER BY id DESC", ttl=0)
+    df_log.columns = ["ID", "Zaman", "İşlemi Yapan", "Olay Tipi", "Teknik Detay"]
+    st.dataframe(df_log, use_container_width=True)
+    st.download_button(":material/download: Logları İndir", excel_export(df_log), "ForleAI_Log.xlsx")
