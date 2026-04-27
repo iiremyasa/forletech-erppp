@@ -79,7 +79,6 @@ st.markdown("""
 # ─────────────────────────────────────────
 # SUPABASE / POSTGRESQL BAĞLANTISI
 # ─────────────────────────────────────────
-# Önemli: Settings > Secrets kısmında db ayarları yapılmış olmalıdır.
 conn = st.connection("postgresql", type="sql")
 
 def init_db():
@@ -168,9 +167,8 @@ if not st.session_state.authenticated:
 # DİNAMİK SIDEBAR & LOGO GÜNCELLEMESİ
 # ─────────────────────────────────────────
 with st.sidebar:
-    # --- LOGO ALANI (AKTİF EDİLDİ) ---
+    # --- LOGO ALANI ---
     try:
-        # Bu satır artık aktif; logo.png dosyasını GitHub klasörüne yüklemeyi unutma!
         st.image("logo.png", use_container_width=True)
         st.markdown(f"""
         <div style='text-align:center;padding:5px 0 15px 0;'>
@@ -179,7 +177,6 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
     except:
-        # Eğer logo.png bulunamazsa sistem hata vermez, sadece yazı gösterir.
         st.markdown(f"<div style='text-align:center;padding:15px;'><h2 style='color:white;'>FORLE TECH</h2><span class='role-badge'>{st.session_state.user_rol}</span></div>", unsafe_allow_html=True)
     
     st.markdown("<hr style='border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
