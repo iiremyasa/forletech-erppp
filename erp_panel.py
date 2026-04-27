@@ -24,13 +24,11 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
-    
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
         border-right: 1px solid rgba(255,255,255,0.05);
     }
     [data-testid="stSidebar"] * { color: #f8fafc !important; }
-    
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         padding: 12px 16px; border-radius: 10px; margin-bottom: 6px;
         transition: all 0.2s ease; cursor: pointer; background: transparent;
@@ -41,7 +39,6 @@ st.markdown("""
     [data-testid="stSidebar"] div[role="radiogroup"] > label[data-baseweb="radio"] > div:first-child {
         display: none !important; 
     }
-    
     div[data-testid="metric-container"] {
         background: var(--background-color, white);
         border: 1px solid rgba(148, 163, 184, 0.2);
@@ -54,7 +51,6 @@ st.markdown("""
         box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
         border-color: #3b82f6;
     }
-    
     .page-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: white; padding: 30px; border-radius: 18px; margin-bottom: 30px;
@@ -62,7 +58,6 @@ st.markdown("""
         border-left: 8px solid #3b82f6;
     }
     .page-header h2 { margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.5px; }
-    
     .role-badge {
         display: inline-block; padding: 5px 14px; border-radius: 100px;
         font-size: 0.75rem; font-weight: 600; background: rgba(59,130,246,0.25);
@@ -78,7 +73,6 @@ conn = st.connection("postgresql", type="sql")
 
 def init_db():
     with conn.session as s:
-        # Tabloları tek tek ve güvenli bir şekilde kuran yapı
         tablolar = [
             "CREATE TABLE IF NOT EXISTS dogrulama_kodlari (id SERIAL PRIMARY KEY, email TEXT, isim TEXT, sifre TEXT, kod TEXT, gecerlilik TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             "CREATE TABLE IF NOT EXISTS kullanicilar (id SERIAL PRIMARY KEY, email TEXT UNIQUE, sifre TEXT, isim TEXT, rol TEXT DEFAULT 'Kullanici', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
@@ -91,10 +85,8 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS bildirimler (id SERIAL PRIMARY KEY, tip TEXT, mesaj TEXT, tarih TEXT, okundu INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             "CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, kullanici TEXT, aksiyon TEXT, detay TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
         ]
-        
         for t in tablolar:
             s.execute(text(t))
-            
         pw = hashlib.sha256("admin123".encode()).hexdigest()
         s.execute(text("INSERT INTO kullanicilar (email, sifre, isim, rol) VALUES ('admin@forleai.com', :pw, 'Sistem Yöneticisi', 'Admin') ON CONFLICT (email) DO NOTHING"), {"pw": pw})
         s.commit()
@@ -126,6 +118,15 @@ def excel_export(df):
     buf.seek(0)
     return buf
 
+# Yeni ve güvenli veri çekme fonksiyonu (Cache sorununu çözer)
+def load_data(query, params=None):
+    with conn.session as s:
+        if params:
+            result = s.execute(text(query), params)
+        else:
+            result = s.execute(text(query))
+        return pd.DataFrame(result.fetchall(), columns=result.keys())
+
 # ─────────────────────────────────────────
 # OTURUM KONTROLÜ (30 Dakika)
 # ─────────────────────────────────────────
@@ -154,9 +155,9 @@ if not st.session_state.authenticated:
                 em = st.text_input("Kurumsal E-posta").strip().lower()
                 pw = st.text_input("Şifre", type="password")
                 if st.form_submit_button("Oturum Aç", use_container_width=True):
-                    res = conn.query(f"SELECT * FROM kullanicilar WHERE email='{em}' AND sifre='{hash_pw(pw)}'").to_dict('records')
-                    if res:
-                        u = res[0]
+                    res = load_data("SELECT * FROM kullanicilar WHERE email=:em AND sifre=:pw", {"em": em, "pw": hash_pw(pw)})
+                    if not res.empty:
+                        u = res.iloc[0]
                         st.session_state.update({"authenticated": True, "user_name": u["isim"], "user_email": u["email"], "user_rol": u["rol"]})
                         log_action(u["isim"], "Giriş")
                         st.rerun()
@@ -192,9 +193,6 @@ with st.sidebar:
         st.session_state.authenticated = False
         st.rerun()
 
-# ─────────────────────────────────────────
-# SAYFA BAŞLIĞI YARDIMCISI
-# ─────────────────────────────────────────
 def page_header(title, desc):
     st.markdown(f'<div class="page-header"><h2>{title}</h2><p>{desc}</p></div>', unsafe_allow_html=True)
 
@@ -206,10 +204,14 @@ def page_header(title, desc):
 if page == "📊 Ana Sayfa":
     page_header("Kontrol Paneli", "FORLE TECH ERP — Operasyonel Özet")
     c1, c2, c3 = st.columns(3)
-    with get_conn() as s:
-        c1.metric("📦 Toplam Parça", conn.query("SELECT count(*) FROM parcalar").iloc[0,0])
-        c2.metric("💻 Kayıtlı Cihaz", conn.query("SELECT count(*) FROM cihazlar").iloc[0,0])
-        c3.metric("📋 Açık Görev", conn.query("SELECT count(*) FROM gorevler WHERE durum != 'Tamamlandı'").iloc[0,0])
+    
+    n_parca = load_data("SELECT count(*) FROM parcalar").iloc[0,0]
+    n_cihaz = load_data("SELECT count(*) FROM cihazlar").iloc[0,0]
+    n_gorev = load_data("SELECT count(*) FROM gorevler WHERE durum != 'Tamamlandı'").iloc[0,0]
+    
+    c1.metric("📦 Toplam Parça", n_parca)
+    c2.metric("💻 Kayıtlı Cihaz", n_cihaz)
+    c3.metric("📋 Açık Görev", n_gorev)
 
 # 📦 PARÇA YÖNETİMİ
 elif page == "📦 Parça Yönetimi":
@@ -233,8 +235,19 @@ elif page == "📦 Parça Yönetimi":
                         s.commit()
                     islem_basarili()
 
-    df = conn.query("SELECT * FROM parcalar ORDER BY created_at DESC")
+    df = load_data("SELECT * FROM parcalar ORDER BY created_at DESC")
     st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("📥 Excel İndir", excel_export(df.drop(columns=["id"], errors="ignore")), "parcalar.xlsx")
+        
+        if yetki_kontrol(["Admin", "Yönetici", "Elektrik Elektronik Mühendisi"]):
+            with st.expander("🗑️ Kayıt Sil"):
+                sil_id = st.selectbox("Silinecek Parça ID", df["id"].tolist())
+                if st.button("Seçili Parçayı Sil"):
+                    with conn.session as s:
+                        s.execute(text(f"DELETE FROM parcalar WHERE id={sil_id}"))
+                        s.commit()
+                    islem_basarili()
 
 # 💻 CİHAZ YÖNETİMİ
 elif page == "💻 Cihaz Yönetimi":
@@ -258,8 +271,19 @@ elif page == "💻 Cihaz Yönetimi":
                         s.commit()
                     islem_basarili()
 
-    df = conn.query("SELECT * FROM cihazlar ORDER BY created_at DESC")
+    df = load_data("SELECT * FROM cihazlar ORDER BY created_at DESC")
     st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("📥 Excel İndir", excel_export(df.drop(columns=["id"], errors="ignore")), "cihazlar.xlsx")
+        
+        if yetki_kontrol(["Admin", "Yönetici", "Elektrik Elektronik Mühendisi"]):
+            with st.expander("🗑️ Kayıt Sil"):
+                sil_id = st.selectbox("Silinecek Cihaz ID", df["id"].tolist())
+                if st.button("Seçili Cihazı Sil"):
+                    with conn.session as s:
+                        s.execute(text(f"DELETE FROM cihazlar WHERE id={sil_id}"))
+                        s.commit()
+                    islem_basarili()
 
 # 💰 KURUMSAL BÜTÇE
 elif page == "💰 Kurumsal Bütçe":
@@ -281,8 +305,18 @@ elif page == "💰 Kurumsal Bütçe":
                     s.commit()
                 islem_basarili()
     
-    df = conn.query("SELECT id, tarih, kategori, tutar, fatura_no, aciklama, giren, belge_adi FROM harcamalar ORDER BY created_at DESC")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    df = load_data("SELECT id, tarih, kategori, tutar, fatura_no, aciklama, giren, belge_adi FROM harcamalar ORDER BY created_at DESC")
+    st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("📥 Excel İndir", excel_export(df.drop(columns=["id"], errors="ignore")), "kurumsal_harcamalar.xlsx")
+        
+        with st.expander("🗑️ Kayıt Sil"):
+            sil_id = st.selectbox("Silinecek Harcama ID", df["id"].tolist())
+            if st.button("Seçili Harcamayı Sil"):
+                with conn.session as s:
+                    s.execute(text(f"DELETE FROM harcamalar WHERE id={sil_id}"))
+                    s.commit()
+                islem_basarili()
 
 # 👥 İNSAN KAYNAKLARI
 elif page == "👥 Personel":
@@ -304,8 +338,18 @@ elif page == "👥 Personel":
                     s.commit()
                 islem_basarili()
 
-    p_df = conn.query("SELECT * FROM personel ORDER BY created_at DESC")
+    p_df = load_data("SELECT * FROM personel ORDER BY created_at DESC")
     st.dataframe(p_df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+    if not p_df.empty:
+        st.download_button("📥 Excel İndir", excel_export(p_df.drop(columns=["id"], errors="ignore")), "personeller.xlsx")
+        
+        with st.expander("🗑️ Kayıt Sil"):
+            sil_id = st.selectbox("Silinecek Personel ID", p_df["id"].tolist())
+            if st.button("Seçili Personeli Sil"):
+                with conn.session as s:
+                    s.execute(text(f"DELETE FROM personel WHERE id={sil_id}"))
+                    s.commit()
+                islem_basarili()
 
 # 🧾 MASRAF BEYANI
 elif page == "🧾 Masraf Beyanı":
@@ -325,7 +369,7 @@ elif page == "🧾 Masraf Beyanı":
                 islem_basarili()
     
     st.markdown("### 📋 Taleplerim")
-    df = conn.query(f"SELECT tarih, tutar, aciklama, durum, yonetici_notu FROM harcama_talepleri WHERE personel='{st.session_state.user_name}' ORDER BY created_at DESC")
+    df = load_data("SELECT tarih, tutar, aciklama, durum, yonetici_notu FROM harcama_talepleri WHERE personel=:p ORDER BY created_at DESC", {"p": st.session_state.user_name})
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 # 📋 GÖREVLER
@@ -348,13 +392,15 @@ elif page == "📋 Görevler":
                     s.commit()
                 islem_basarili()
 
-    df = conn.query("SELECT * FROM gorevler ORDER BY created_at DESC")
+    df = load_data("SELECT * FROM gorevler ORDER BY created_at DESC")
     st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("📥 Excel İndir", excel_export(df.drop(columns=["id"], errors="ignore")), "gorevler.xlsx")
 
 # ✅ ONAY PANELİ
 elif page == "✅ Onay Paneli":
     page_header("Onay Paneli", "Masraf Taleplerini Yönetin")
-    df = conn.query("SELECT * FROM harcama_talepleri WHERE durum='Bekliyor' ORDER BY created_at DESC")
+    df = load_data("SELECT * FROM harcama_talepleri WHERE durum='Bekliyor' ORDER BY created_at DESC")
     if not df.empty:
         for _, r in df.iterrows():
             with st.container():
@@ -376,13 +422,15 @@ elif page == "✅ Onay Paneli":
 # 🛡️ AUDIT LOG
 elif page == "🛡️ Audit Log":
     page_header("Sistem Logları", "Güvenlik ve İşlem Geçmişi")
-    df = conn.query("SELECT * FROM audit_log ORDER BY created_at DESC")
+    df = load_data("SELECT * FROM audit_log ORDER BY created_at DESC")
     st.dataframe(df, use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("📥 Excel İndir", excel_export(df.drop(columns=["id"], errors="ignore")), "audit_log.xlsx")
 
 # 🔑 YETKİLER
 elif page == "🔑 Yetkiler":
     page_header("Yetkilendirme Paneli", "Kullanıcı Rolleri")
-    k_df = conn.query("SELECT id, email, isim, rol FROM kullanicilar ORDER BY created_at DESC")
+    k_df = load_data("SELECT id, email, isim, rol FROM kullanicilar ORDER BY created_at DESC")
     st.dataframe(k_df, use_container_width=True, hide_index=True)
     with st.form("yetki_form"):
         y_id = st.selectbox("Yetkisi Değişecek Kullanıcı Seç (ID)", k_df["id"].tolist())
