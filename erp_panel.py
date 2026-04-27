@@ -412,12 +412,26 @@ elif page == "Cihaz Yönetimi":
     if yetki_kontrol(["Admin", "Yönetici", "Elektrik Elektronik Mühendisi"]):
         with st.expander("Yeni Cihaz Ekle"):
             with st.form("cihaz_form", clear_on_submit=True):
-                ca = st.text_input("Cihaz Adı")
-                mo = st.text_input("Model")
-                du = st.selectbox("Durum", ["Aktif","Testte","Bakımda","Depoda"])
+                c1, c2 = st.columns(2)
+                
+                # 1. Sütun
+                ca = c1.text_input("Cihaz Adı")
+                ip = c1.text_input("IP Adresi")
+                mo = c1.text_input("Model")
+                du = c1.selectbox("Durum", ["Aktif","Testte","Bakımda","Depoda"])
+                
+                # 2. Sütun
+                sens = c2.text_input("Takılı Sensör Seri No")
+                ana = c2.text_input("Anakart Seri No")
+                sn = c2.text_input("Seri No")
+                notlar = st.text_area("Notlar")
+                
                 if st.form_submit_button("Kaydet"):
                     with get_conn() as conn:
-                        conn.execute("INSERT INTO cihazlar (cihaz_adi, model, durum, ekleyen) VALUES (?,?,?,?)", (ca, mo, du, st.session_state.user_name))
+                        conn.execute("""INSERT INTO cihazlar 
+                                     (cihaz_adi, ip, model, takili_sensor_seri, anakart_seri, durum, seri_no, notlar, ekleyen) 
+                                     VALUES (?,?,?,?,?,?,?,?,?)""", 
+                                     (ca, ip, mo, sens, ana, du, sn, notlar, st.session_state.user_name))
                     islem_basarili_toast()
         excel_import_ui("cihazlar")
     else:
@@ -436,7 +450,6 @@ elif page == "Cihaz Yönetimi":
                 if st.button("Seçili Cihazı Sil"):
                     sil_kayit("cihazlar", sil_id)
                     islem_basarili_toast()
-
 # ─────────────────────────────────────────
 # KURUMSAL BÜTÇE (Sadece Yönetici)
 # ─────────────────────────────────────────
