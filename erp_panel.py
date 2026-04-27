@@ -23,17 +23,14 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
     html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
     
-    /* Modern Sidebar Tasarımı */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
         border-right: 1px solid rgba(255,255,255,0.05);
     }
     [data-testid="stSidebar"] * { color: #f8fafc !important; }
     
-    /* Navigasyon Menü Butonları */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
         padding: 12px 16px; border-radius: 10px; margin-bottom: 6px;
         transition: all 0.2s ease; cursor: pointer; background: transparent;
@@ -45,7 +42,6 @@ st.markdown("""
         display: none !important; 
     }
     
-    /* Metric Kartları ve Animasyonlar */
     div[data-testid="metric-container"] {
         background: var(--background-color, white);
         border: 1px solid rgba(148, 163, 184, 0.2);
@@ -59,7 +55,6 @@ st.markdown("""
         border-color: #3b82f6;
     }
     
-    /* Kurumsal Sayfa Başlığı */
     .page-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: white; padding: 30px; border-radius: 18px; margin-bottom: 30px;
@@ -77,25 +72,29 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────
-# SUPABASE / POSTGRESQL BAĞLANTISI
+# SUPABASE BAĞLANTISI VE TABLO KURULUMU
 # ─────────────────────────────────────────
 conn = st.connection("postgresql", type="sql")
 
 def init_db():
     with conn.session as s:
-        # Tablolar PostgreSQL (Supabase) standartlarına uygun olarak tek tek oluşturulur.
-        s.execute(text("CREATE TABLE IF NOT EXISTS dogrulama_kodlari (id SERIAL PRIMARY KEY, email TEXT, isim TEXT, sifre TEXT, kod TEXT, gecerlilik TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS kullanicilar (id SERIAL PRIMARY KEY, email TEXT UNIQUE, sifre TEXT, isim TEXT, rol TEXT DEFAULT 'Kullanici', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS parcalar (id SERIAL PRIMARY KEY, varlik_etiketi TEXT, kayit_tarihi TEXT, model TEXT, durum TEXT, seri_no TEXT, durum_notu TEXT, yazilim_versiyonu TEXT, bagli_cihaz TEXT, ekleyen TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS cihazlar (id SERIAL PRIMARY KEY, cihaz_adi TEXT, ip TEXT, model TEXT, takili_sensor_seri TEXT, anakart_seri TEXT, durum TEXT, seri_no TEXT, notlar TEXT, ekleyen TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS harcamalar (id SERIAL PRIMARY KEY, tarih TEXT, kategori TEXT, tutar REAL, fatura_no TEXT, aciklama TEXT, giren TEXT, belge_adi TEXT, belge_data BYTEA, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS gorevler (id SERIAL PRIMARY KEY, baslik TEXT, aciklama TEXT, atanan TEXT, durum TEXT DEFAULT 'Bekliyor', oncelik TEXT DEFAULT 'Orta', son_tarih TEXT, proje TEXT, olusturan TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS personel (id SERIAL PRIMARY KEY, isim TEXT, email TEXT, pozisyon TEXT, departman TEXT, ise_baslama TEXT, telefon TEXT, notlar TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS harcama_talepleri (id SERIAL PRIMARY KEY, personel TEXT, tarih TEXT, tutar REAL, aciklama TEXT, belge_adi TEXT, belge_data BYTEA, durum TEXT DEFAULT 'Bekliyor', yonetici_notu TEXT, dekont_adi TEXT, dekont_data BYTEA, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS bildirimler (id SERIAL PRIMARY KEY, tip TEXT, mesaj TEXT, tarih TEXT, okundu INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
-        s.execute(text("CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, kullanici TEXT, aksiyon TEXT, detay TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"))
+        # Tabloları tek tek ve güvenli bir şekilde kuran yapı
+        tablolar = [
+            "CREATE TABLE IF NOT EXISTS dogrulama_kodlari (id SERIAL PRIMARY KEY, email TEXT, isim TEXT, sifre TEXT, kod TEXT, gecerlilik TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS kullanicilar (id SERIAL PRIMARY KEY, email TEXT UNIQUE, sifre TEXT, isim TEXT, rol TEXT DEFAULT 'Kullanici', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS parcalar (id SERIAL PRIMARY KEY, varlik_etiketi TEXT, kayit_tarihi TEXT, model TEXT, durum TEXT, seri_no TEXT, durum_notu TEXT, yazilim_versiyonu TEXT, bagli_cihaz TEXT, ekleyen TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS cihazlar (id SERIAL PRIMARY KEY, cihaz_adi TEXT, ip TEXT, model TEXT, takili_sensor_seri TEXT, anakart_seri TEXT, durum TEXT, seri_no TEXT, notlar TEXT, ekleyen TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS harcamalar (id SERIAL PRIMARY KEY, tarih TEXT, kategori TEXT, tutar REAL, fatura_no TEXT, aciklama TEXT, giren TEXT, belge_adi TEXT, belge_data BYTEA, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS gorevler (id SERIAL PRIMARY KEY, baslik TEXT, aciklama TEXT, atanan TEXT, durum TEXT DEFAULT 'Bekliyor', oncelik TEXT DEFAULT 'Orta', son_tarih TEXT, proje TEXT, olusturan TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS personel (id SERIAL PRIMARY KEY, isim TEXT, email TEXT, pozisyon TEXT, departman TEXT, ise_baslama TEXT, telefon TEXT, notlar TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS harcama_talepleri (id SERIAL PRIMARY KEY, personel TEXT, tarih TEXT, tutar REAL, aciklama TEXT, belge_adi TEXT, belge_data BYTEA, durum TEXT DEFAULT 'Bekliyor', yonetici_notu TEXT, dekont_adi TEXT, dekont_data BYTEA, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS bildirimler (id SERIAL PRIMARY KEY, tip TEXT, mesaj TEXT, tarih TEXT, okundu INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, kullanici TEXT, aksiyon TEXT, detay TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+        ]
         
-        # Admin hesabı oluşturulur
+        for t in tablolar:
+            s.execute(text(t))
+            
         pw = hashlib.sha256("admin123".encode()).hexdigest()
         s.execute(text("INSERT INTO kullanicilar (email, sifre, isim, rol) VALUES ('admin@forleai.com', :pw, 'Sistem Yöneticisi', 'Admin') ON CONFLICT (email) DO NOTHING"), {"pw": pw})
         s.commit()
@@ -168,7 +167,6 @@ if not st.session_state.authenticated:
 # DİNAMİK SIDEBAR & LOGO GÜNCELLEMESİ
 # ─────────────────────────────────────────
 with st.sidebar:
-    # --- LOGO ALANI ---
     try:
         st.image("logo.png", use_container_width=True)
         st.markdown(f"""
@@ -263,6 +261,52 @@ elif page == "💻 Cihaz Yönetimi":
     df = conn.query("SELECT * FROM cihazlar ORDER BY created_at DESC")
     st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
 
+# 💰 KURUMSAL BÜTÇE
+elif page == "💰 Kurumsal Bütçe":
+    page_header("Kurumsal Bütçe", "Şirket Harcamaları ve Fatura Yönetimi")
+    with st.expander("➕ Harcama Girişi"):
+        with st.form("h_form", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            tr = c1.date_input("Tarih")
+            kt = c1.selectbox("Kategori", ["Ar-Ge","Ofis","Seyahat","Maaş","Diğer"])
+            tt = c2.number_input("Tutar (₺)")
+            fn = c2.text_input("Fatura/Fiş No")
+            ac = st.text_area("Açıklama")
+            fl = st.file_uploader("Dosya Ekle", type=["pdf","png","jpg"])
+            if st.form_submit_button("Kaydet"):
+                fb = fl.read() if fl else None
+                with conn.session as s:
+                    s.execute(text("INSERT INTO harcamalar (tarih, kategori, tutar, fatura_no, aciklama, giren, belge_adi, belge_data) VALUES (:tr,:kt,:tt,:fn,:ac,:gr,:bn,:bd)"),
+                              {"tr":tr.strftime("%Y-%m-%d"),"kt":kt,"tt":tt,"fn":fn,"ac":ac,"gr":st.session_state.user_name,"bn":fl.name if fl else None,"bd":fb})
+                    s.commit()
+                islem_basarili()
+    
+    df = conn.query("SELECT id, tarih, kategori, tutar, fatura_no, aciklama, giren, belge_adi FROM harcamalar ORDER BY created_at DESC")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+# 👥 İNSAN KAYNAKLARI
+elif page == "👥 Personel":
+    page_header("İnsan Kaynakları", "Personel Veritabanı")
+    with st.expander("➕ Yeni Personel Ekle"):
+        with st.form("personel_form", clear_on_submit=True):
+            p1, p2 = st.columns(2)
+            per_isim  = p1.text_input("Ad Soyad")
+            per_email = p1.text_input("E-posta")
+            per_tel   = p1.text_input("Telefon")
+            per_poz   = p2.text_input("Pozisyon")
+            per_dep   = p2.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
+            per_basl  = p2.date_input("İşe Başlama", datetime.date.today())
+            per_not = st.text_area("Notlar")
+            if st.form_submit_button("Kaydet"):
+                with conn.session as s:
+                    s.execute(text("INSERT INTO personel (isim,email,pozisyon,departman,ise_baslama,telefon,notlar) VALUES (:i,:e,:p,:d,:b,:t,:n)"),
+                              {"i":per_isim, "e":per_email, "p":per_poz, "d":per_dep, "b":per_basl.strftime("%Y-%m-%d"), "t":per_tel, "n":per_not})
+                    s.commit()
+                islem_basarili()
+
+    p_df = conn.query("SELECT * FROM personel ORDER BY created_at DESC")
+    st.dataframe(p_df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+
 # 🧾 MASRAF BEYANI
 elif page == "🧾 Masraf Beyanı":
     page_header("Masraf Beyanı", "Kişisel Harcama İade Talepleri")
@@ -283,6 +327,71 @@ elif page == "🧾 Masraf Beyanı":
     st.markdown("### 📋 Taleplerim")
     df = conn.query(f"SELECT tarih, tutar, aciklama, durum, yonetici_notu FROM harcama_talepleri WHERE personel='{st.session_state.user_name}' ORDER BY created_at DESC")
     st.dataframe(df, use_container_width=True, hide_index=True)
+
+# 📋 GÖREVLER
+elif page == "📋 Görevler":
+    page_header("Proje & Görev Takibi", "Kurumsal Görev Atama")
+    with st.expander("➕ Yeni Görev Ekle"):
+        with st.form("gorev_form", clear_on_submit=True):
+            g1, g2 = st.columns(2)
+            g_baslik  = g1.text_input("Görev Başlığı")
+            g_proje   = g1.text_input("Proje Adı")
+            g_atanan  = g1.text_input("Atanan Kişi")
+            g_oncelik = g2.selectbox("Öncelik", ["Düşük","Orta","Yüksek","Kritik"])
+            g_durum   = g2.selectbox("Durum", ["Bekliyor","Devam Ediyor","İncelemede","Tamamlandı"])
+            g_tarih   = g2.date_input("Son Tarih", datetime.date.today())
+            g_acik = st.text_area("Açıklama")
+            if st.form_submit_button("Görev Ekle"):
+                with conn.session as s:
+                    s.execute(text("INSERT INTO gorevler (baslik,aciklama,atanan,durum,oncelik,son_tarih,proje,olusturan) VALUES (:b,:a,:at,:d,:o,:st,:p,:ol)"),
+                              {"b":g_baslik, "a":g_acik, "at":g_atanan, "d":g_durum, "o":g_oncelik, "st":g_tarih.strftime("%Y-%m-%d"), "p":g_proje, "ol":st.session_state.user_name})
+                    s.commit()
+                islem_basarili()
+
+    df = conn.query("SELECT * FROM gorevler ORDER BY created_at DESC")
+    st.dataframe(df.drop(columns=["id"], errors="ignore"), use_container_width=True, hide_index=True)
+
+# ✅ ONAY PANELİ
+elif page == "✅ Onay Paneli":
+    page_header("Onay Paneli", "Masraf Taleplerini Yönetin")
+    df = conn.query("SELECT * FROM harcama_talepleri WHERE durum='Bekliyor' ORDER BY created_at DESC")
+    if not df.empty:
+        for _, r in df.iterrows():
+            with st.container():
+                st.write(f"**{r['personel']}** | {r['tutar']}₺ - {r['aciklama']}")
+                not_ = st.text_input("İşlem Notu", key=f"not_{r['id']}")
+                c1, c2, c3 = st.columns(3)
+                if c1.button("Onayla", key=f"on_{r['id']}"):
+                    with conn.session as s:
+                        s.execute(text(f"UPDATE harcama_talepleri SET durum='Onaylandı', yonetici_notu='{not_}' WHERE id={r['id']}"))
+                        s.commit()
+                    st.rerun()
+                if c2.button("Reddet", key=f"rd_{r['id']}"):
+                    with conn.session as s:
+                        s.execute(text(f"UPDATE harcama_talepleri SET durum='Reddedildi', yonetici_notu='{not_}' WHERE id={r['id']}"))
+                        s.commit()
+                    st.rerun()
+    else: st.success("Bekleyen talep yok.")
+
+# 🛡️ AUDIT LOG
+elif page == "🛡️ Audit Log":
+    page_header("Sistem Logları", "Güvenlik ve İşlem Geçmişi")
+    df = conn.query("SELECT * FROM audit_log ORDER BY created_at DESC")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+# 🔑 YETKİLER
+elif page == "🔑 Yetkiler":
+    page_header("Yetkilendirme Paneli", "Kullanıcı Rolleri")
+    k_df = conn.query("SELECT id, email, isim, rol FROM kullanicilar ORDER BY created_at DESC")
+    st.dataframe(k_df, use_container_width=True, hide_index=True)
+    with st.form("yetki_form"):
+        y_id = st.selectbox("Yetkisi Değişecek Kullanıcı Seç (ID)", k_df["id"].tolist())
+        yeni_rol = st.selectbox("Yeni Rol Ata", ["Kullanici", "Elektrik Elektronik Mühendisi", "Yönetici", "Admin"])
+        if st.form_submit_button("Rolü Güncelle"):
+            with conn.session as s:
+                s.execute(text(f"UPDATE kullanicilar SET rol='{yeni_rol}' WHERE id={y_id}"))
+                s.commit()
+            islem_basarili()
 
 # ⚙️ AYARLAR
 elif page == "⚙️ Ayarlar":
