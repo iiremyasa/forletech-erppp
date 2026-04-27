@@ -4,6 +4,10 @@ import datetime
 import sqlite3
 import io
 import hashlib
+import random
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from contextlib import contextmanager
 
 st.set_page_config(
@@ -85,6 +89,49 @@ st.markdown("""
 # ─────────────────────────────────────────
 DB = "forletech.db"
 
+# ─────────────────────────────────────────
+# MAIL FONKSİYONU
+# ─────────────────────────────────────────
+def mail_gonder(alici, konu, icerik):
+    try:
+        cfg      = st.secrets["smtp"]
+        server   = cfg["server"]
+        port     = int(cfg["port"])
+        email    = cfg["email"]
+        password = cfg["password"]
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = konu
+        msg["From"]    = f"FORLE TECH ERP <{email}>"
+        msg["To"]      = alici
+
+        html = MIMEText(f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#1a2332;padding:24px;border-radius:12px 12px 0 0;">
+                <h2 style="color:white;margin:0;">🏢 FORLE TECH</h2>
+                <p style="color:#a0b4c8;margin:4px 0 0;">Kurumsal ERP Sistemi</p>
+            </div>
+            <div style="background:white;padding:24px;border:1px solid #e2e8f0;border-radius:0 0 12px 12px;">
+                {icerik}
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+                <p style="color:#94a3b8;font-size:0.8rem;">
+                    Bu mail FORLE TECH ERP sistemi tarafından otomatik gönderilmiştir.
+                </p>
+            </div>
+        </div>
+        """, "html", "utf-8")
+
+        msg.attach(html)
+        with smtplib.SMTP(server, port) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(email, password)
+            s.sendmail(email, alici, msg.as_string())
+        return True
+    except Exception as e:
+        st.warning(f"Mail gönderilemedi: {e}")
+        return False
+
 @contextmanager
 def get_conn():
     conn = sqlite3.connect(DB, check_same_thread=False)
@@ -99,6 +146,16 @@ def init_db():
     with get_conn() as conn:
         c = conn.cursor()
         c.executescript("""
+        CREATE TABLE IF NOT EXISTS dogrulama_kodlari (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            isim TEXT NOT NULL,
+            sifre TEXT NOT NULL,
+            kod TEXT NOT NULL,
+            gecerlilik TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+
         CREATE TABLE IF NOT EXISTS kullanicilar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
@@ -297,28 +354,140 @@ if not st.session_state.authenticated:
                         st.error("Hatalı e-posta veya şifre.")
 
         with tab2:
-            with st.form("kayit"):
-                isim   = st.text_input("Ad Soyad").strip()
-                email2 = st.text_input("E-posta (@forleai.com)").strip().lower()
-                pw2    = st.text_input("Şifre", type="password").strip()
-                pw2b   = st.text_input("Şifre Tekrar", type="password").strip()
-                if st.form_submit_button("Kayıt Ol", use_container_width=True):
-                    if not email2.endswith("@forleai.com"):
-                        st.error("Sadece @forleai.com uzantısı kabul edilir.")
-                    elif pw2 != pw2b:
-                        st.error("Şifreler uyuşmuyor.")
-                    elif len(pw2) < 4:
-                        st.error("Şifre çok kısa.")
-                    else:
-                        try:
+            # Doğrulama adımı kontrolü
+            if "kayit_dogrulama_bekleniyor" not in st.session_state:
+                st.session_state.kayit_dogrulama_bekleniyor = False
+
+            if not st.session_state.kayit_dogrulama_bekleniyor:
+                # ADIM 1 — Kayıt Formu
+                with st.form("kayit"):
+                    isim   = st.text_input("Ad Soyad").strip()
+                    email2 = st.text_input("E-posta (@forleai.com)").strip().lower()
+                    pw2    = st.text_input("Şifre", type="password").strip()
+                    pw2b   = st.text_input("Şifre Tekrar", type="password").strip()
+                    if st.form_submit_button("Doğrulama Kodu Gönder", use_container_width=True):
+                        if not email2.endswith("@forleai.com"):
+                            st.error("Sadece @forleai.com uzantısı kabul edilir.")
+                        elif pw2 != pw2b:
+                            st.error("Şifreler uyuşmuyor.")
+                        elif len(pw2) < 4:
+                            st.error("Şifre çok kısa.")
+                        else:
+                            # E-posta kayıtlı mı kontrol et
                             with get_conn() as conn:
-                                conn.execute(
-                                    "INSERT INTO kullanicilar (email,sifre,isim) VALUES (?,?,?)",
-                                    (email2, hash_pw(pw2), isim)
+                                mevcut = conn.execute(
+                                    "SELECT id FROM kullanicilar WHERE email=?", (email2,)
+                                ).fetchone()
+                            if mevcut:
+                                st.warning("Bu e-posta zaten kayıtlı.")
+                            else:
+                                # 6 haneli kod üret
+                                kod = str(random.randint(100000, 999999))
+                                gecerlilik = (
+                                    datetime.datetime.now() + datetime.timedelta(minutes=10)
+                                ).strftime("%Y-%m-%d %H:%M:%S")
+
+                                # Kodu DB'ye kaydet
+                                with get_conn() as conn:
+                                    conn.execute(
+                                        "DELETE FROM dogrulama_kodlari WHERE email=?", (email2,)
+                                    )
+                                    conn.execute(
+                                        """INSERT INTO dogrulama_kodlari
+                                           (email, isim, sifre, kod, gecerlilik)
+                                           VALUES (?,?,?,?,?)""",
+                                        (email2, isim, hash_pw(pw2), kod, gecerlilik)
+                                    )
+
+                                # Mail gönder
+                                gonderildi = mail_gonder(
+                                    email2,
+                                    "FORLE TECH ERP — E-posta Doğrulama Kodunuz",
+                                    f"""
+                                    <p>Merhaba <b>{isim}</b>,</p>
+                                    <p>FORLE TECH ERP sistemine kayıt isteğiniz alındı.</p>
+                                    <p>Doğrulama kodunuz:</p>
+                                    <div style="background:#f0f4ff;border-radius:12px;
+                                                padding:24px;text-align:center;margin:20px 0;">
+                                        <span style="font-size:2.5rem;font-weight:800;
+                                                     letter-spacing:0.3em;color:#1a2332;">
+                                            {kod}
+                                        </span>
+                                    </div>
+                                    <p style="color:#64748b;">
+                                        Bu kod <b>10 dakika</b> geçerlidir.<br>
+                                        Eğer bu isteği siz yapmadıysanız bu maili dikkate almayın.
+                                    </p>
+                                    """
                                 )
-                            st.success("Kayıt başarılı! Giriş yapabilirsin.")
-                        except sqlite3.IntegrityError:
-                            st.warning("Bu e-posta zaten kayıtlı.")
+                                if gonderildi:
+                                    st.session_state.kayit_dogrulama_bekleniyor = True
+                                    st.session_state.kayit_email = email2
+                                    st.rerun()
+            else:
+                # ADIM 2 — Doğrulama Kodu Girişi
+                st.info(f"**{st.session_state.kayit_email}** adresine 6 haneli doğrulama kodu gönderildi. Lütfen mailinizi kontrol edin.")
+                with st.form("dogrulama"):
+                    girilen_kod = st.text_input(
+                        "Doğrulama Kodu", placeholder="6 haneli kodu girin",
+                        max_chars=6
+                    ).strip()
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        onayla = st.form_submit_button("Hesabı Onayla", use_container_width=True)
+                    with c2:
+                        iptal = st.form_submit_button("İptal", use_container_width=True)
+
+                    if onayla:
+                        with get_conn() as conn:
+                            kayit = conn.execute(
+                                """SELECT * FROM dogrulama_kodlari
+                                   WHERE email=? AND kod=?""",
+                                (st.session_state.kayit_email, girilen_kod)
+                            ).fetchone()
+
+                        if not kayit:
+                            st.error("Hatalı kod! Lütfen tekrar deneyin.")
+                        else:
+                            # Süre kontrolü
+                            gecerlilik = datetime.datetime.strptime(
+                                kayit["gecerlilik"], "%Y-%m-%d %H:%M:%S"
+                            )
+                            if datetime.datetime.now() > gecerlilik:
+                                st.error("Kodun süresi dolmuş! Lütfen tekrar kayıt olun.")
+                                st.session_state.kayit_dogrulama_bekleniyor = False
+                                with get_conn() as conn:
+                                    conn.execute(
+                                        "DELETE FROM dogrulama_kodlari WHERE email=?",
+                                        (st.session_state.kayit_email,)
+                                    )
+                                st.rerun()
+                            else:
+                                # Kullanıcıyı kaydet
+                                try:
+                                    with get_conn() as conn:
+                                        conn.execute(
+                                            "INSERT INTO kullanicilar (email,sifre,isim) VALUES (?,?,?)",
+                                            (kayit["email"], kayit["sifre"], kayit["isim"])
+                                        )
+                                        conn.execute(
+                                            "DELETE FROM dogrulama_kodlari WHERE email=?",
+                                            (kayit["email"],)
+                                        )
+                                    st.session_state.kayit_dogrulama_bekleniyor = False
+                                    st.success("Hesabınız doğrulandı! Giriş yapabilirsiniz.")
+                                    st.rerun()
+                                except sqlite3.IntegrityError:
+                                    st.warning("Bu e-posta zaten kayıtlı.")
+
+                    if iptal:
+                        st.session_state.kayit_dogrulama_bekleniyor = False
+                        with get_conn() as conn:
+                            conn.execute(
+                                "DELETE FROM dogrulama_kodlari WHERE email=?",
+                                (st.session_state.get("kayit_email", ""),)
+                            )
+                        st.rerun()
     st.stop()
 
 # ─────────────────────────────────────────
