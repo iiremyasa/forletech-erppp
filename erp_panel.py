@@ -133,7 +133,7 @@ def hash_pw(pw): return hashlib.sha256(pw.encode()).hexdigest()
 init_db()
 
 # ─────────────────────────────────────────
-# YARDIMCI FONKSİYONLAR
+# YARDIMCI FONKSİYONLAR & YETKİLENDİRME
 # ─────────────────────────────────────────
 def excel_export(df):
     buf = io.BytesIO()
@@ -156,6 +156,23 @@ def load_df(table, cols=None, where_clause="", params=()):
 
 def yetki_kontrol(izin_verilen_roller):
     return st.session_state.user_rol in izin_verilen_roller
+
+def excel_import_ui(tablo_adi):
+    with st.expander(f"📁 Excel'den Toplu {tablo_adi.capitalize()} İçe Aktar", expanded=False):
+        st.info("Sistemden indirdiğiniz Excel dosyasına verilerinizi doldurup buradan tek seferde yükleyebilirsiniz. Sütun isimlerini değiştirmeyin.")
+        uploaded_file = st.file_uploader(f"Excel Dosyası Yükle ({tablo_adi})", type=["xlsx", "xls"], key=f"file_{tablo_adi}")
+        if uploaded_file and st.button("İçeri Aktar", key=f"btn_{tablo_adi}"):
+            try:
+                df_import = pd.read_excel(uploaded_file)
+                if "id" in df_import.columns: df_import = df_import.drop(columns=["id"])
+                if "created_at" in df_import.columns: df_import = df_import.drop(columns=["created_at"])
+                with get_conn() as conn:
+                    df_import.to_sql(tablo_adi, conn, if_exists="append", index=False)
+                log_action(st.session_state.user_name, "Excel İçe Aktarım", tablo_adi)
+                st.success(f"{len(df_import)} kayıt başarıyla eklendi!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Hata oluştu! Sütun başlıklarının doğru olduğundan emin olun. Detay: {e}")
 
 # ─────────────────────────────────────────
 # GİRİŞ EKRANI
@@ -277,26 +294,6 @@ if page == "Ana Sayfa":
             c1.metric("Kayıtlı Parça", n_parca)
             c2.metric("Kayıtlı Cihaz", n_cihaz)
             c3.metric("Açık Görev", n_gorev)
-
-# ─────────────────────────────────────────
-# EXCEL İÇE AKTARMA ŞABLONU FONKSİYONU
-# ─────────────────────────────────────────
-def excel_import_ui(tablo_adi):
-    with st.expander(f"📁 Excel'den Toplu {tablo_adi.capitalize()} İçe Aktar", expanded=False):
-        st.info("Sistemden indirdiğiniz Excel dosyasına verilerinizi doldurup buradan tek seferde yükleyebilirsiniz. Sütun isimlerini değiştirmeyin.")
-        uploaded_file = st.file_uploader(f"Excel Dosyası Yükle ({tablo_adi})", type=["xlsx", "xls"], key=f"file_{tablo_adi}")
-        if uploaded_file and st.button("İçeri Aktar", key=f"btn_{tablo_adi}"):
-            try:
-                df_import = pd.read_excel(uploaded_file)
-                if "id" in df_import.columns: df_import = df_import.drop(columns=["id"])
-                if "created_at" in df_import.columns: df_import = df_import.drop(columns=["created_at"])
-                with get_conn() as conn:
-                    df_import.to_sql(tablo_adi, conn, if_exists="append", index=False)
-                log_action(st.session_state.user_name, "Excel İçe Aktarım", tablo_adi)
-                st.success(f"{len(df_import)} kayıt başarıyla eklendi!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Hata oluştu! Sütun başlıklarının doğru olduğundan emin olun. Detay: {e}")
 
 # ─────────────────────────────────────────
 # PARÇA YÖNETİMİ (Sınırlı Ekleme Yetkisi)
