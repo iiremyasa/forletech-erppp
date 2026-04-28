@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from sqlalchemy import text
 
-st.set_page_config(page_title="FORLE TECH | ERP Portal", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="FORLE TECH | ERP Portal", page_icon=None, layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -82,7 +82,7 @@ def bildirim_ekle(mesaj, tip="bilgi", hedef_rol="Tumu"):
         pass  # Tablo yoksa sessizce geç
 
 def islem_basarili(msg="İşlem kaydedildi!"):
-    st.toast(f"✅ {msg}", icon="✅")
+    st.toast(msg)
     time.sleep(0.4)
     st.rerun()
 
@@ -97,9 +97,9 @@ def page_header(title, desc):
     st.markdown(f'<div class="page-header"><h2>{title}</h2><p>{desc}</p></div>', unsafe_allow_html=True)
 
 def excel_import_bolumu(table, col_map, key, ekstra_cols=None):
-    with st.expander("📤 Excel'den Veri Aktar", expanded=False):
+    with st.expander("Excel'den Veri Aktar", expanded=False):
         sablon = pd.DataFrame(columns=list(col_map.keys()))
-        st.download_button("📥 Şablon İndir", excel_export(sablon), f"sablon_{key}.xlsx",
+        st.download_button("Sablon Indir", excel_export(sablon), f"sablon_{key}.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"sbl_{key}")
         dosya = st.file_uploader("Excel Yükle (.xlsx)", type=["xlsx"], key=f"upl_{key}")
         if dosya:
@@ -195,10 +195,10 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.markdown("<div style='text-align:center;padding:50px 0;'><h1 style='color:#0f172a;font-size:2.5rem;'>🚀 FORLE TECH</h1><p style='color:#64748b;'>Kurumsal ERP Portalı</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center;padding:50px 0;'><h1 style='color:#0f172a;font-size:2.5rem;'>FORLE TECH</h1><p style='color:#64748b;'>Kurumsal ERP Portalı</p></div>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
-        tab1, tab2 = st.tabs([" Giriş Yap", " Yeni Hesap"])
+        tab1, tab2 = st.tabs(["Giris Yap", "Yeni Hesap"])
         with tab1:
             with st.form("login"):
                 em = st.text_input("E-posta", placeholder="isim@forleai.com").strip().lower()
@@ -295,7 +295,7 @@ with st.sidebar:
     try:
         st.image("logo.png", use_container_width=True)
     except:
-        st.markdown("<div style='text-align:center;padding:8px 0;font-size:1.5rem;font-weight:800;color:white;'>🚀 FORLE TECH</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center;padding:8px 0;font-size:1.5rem;font-weight:800;color:white;'>FORLE TECH</div>", unsafe_allow_html=True)
 
     st.markdown(f"""
     <div style='background:rgba(255,255,255,0.07);border-radius:10px;padding:12px;margin:8px 0 16px;text-align:center;'>
@@ -304,10 +304,10 @@ with st.sidebar:
         <span class='role-badge'>{USER_ROL}</span>
     </div>""", unsafe_allow_html=True)
 
-    menuler = [" Ana Sayfa", " Parça Yönetimi", " Cihaz Yönetimi", " Masraf Beyanı", " Görevler", " Ayarlar"]
+    menuler = ["Ana Sayfa", "Parca Yonetimi", "Cihaz Yonetimi", "Masraf Beyani", "Gorevler", "Ayarlar"]
     if IS_YONETICI:
-        menuler.insert(3, " Kurumsal Bütçe")
-        menuler += [" Personel", " Onay Paneli", " Audit Log", " Yetkiler"]
+        menuler.insert(3, "Kurumsal Butce")
+        menuler += ["Personel", "Onay Paneli", "Audit Log", "Yetkiler"]
 
     # Okunmamış bildirim sayısı
     try:
@@ -316,11 +316,11 @@ with st.sidebar:
     except:
         n_notif = 0
     if n_notif > 0:
-        st.markdown(f"<div style='background:rgba(245,158,11,0.2);border-radius:8px;padding:8px 12px;border-left:3px solid #f59e0b;margin-bottom:10px;font-size:0.82rem;color:#fcd34d;'>🔔 {n_notif} okunmamış bildirim</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background:rgba(245,158,11,0.2);border-radius:8px;padding:8px 12px;border-left:3px solid #f59e0b;margin-bottom:10px;font-size:0.82rem;color:#fcd34d;'>{n_notif} okunmamis bildirim</div>", unsafe_allow_html=True)
 
     page = st.radio("Menü", menuler, label_visibility="collapsed")
     st.markdown("---")
-    if st.button(" Çıkış Yap", use_container_width=True):
+    if st.button("Cikis Yap", use_container_width=True):
         log_action(st.session_state.user_name, "Çıkış")
         st.session_state.authenticated = False
         st.rerun()
@@ -328,16 +328,16 @@ with st.sidebar:
 # ══════════════════════════════════════════
 # ANA SAYFA
 # ══════════════════════════════════════════
-if page == " Ana Sayfa":
+if page == "Ana Sayfa":
     page_header("Kontrol Paneli", "Operasyonel Özet")
 
     c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric(" Parça",    load_df("SELECT COUNT(*) as n FROM parcalar").iloc[0,0])
-    c2.metric(" Cihaz",    load_df("SELECT COUNT(*) as n FROM cihazlar").iloc[0,0])
-    c3.metric(" Görev",    load_df("SELECT COUNT(*) as n FROM gorevler WHERE durum!='Tamamlandı'").iloc[0,0])
-    c4.metric(" Personel", load_df("SELECT COUNT(*) as n FROM personel").iloc[0,0])
+    c1.metric("Parca",    load_df("SELECT COUNT(*) as n FROM parcalar").iloc[0,0])
+    c2.metric("Cihaz",    load_df("SELECT COUNT(*) as n FROM cihazlar").iloc[0,0])
+    c3.metric("Gorev",    load_df("SELECT COUNT(*) as n FROM gorevler WHERE durum!='Tamamlandı'").iloc[0,0])
+    c4.metric("Personel", load_df("SELECT COUNT(*) as n FROM personel").iloc[0,0])
     masraf_bekleyen = load_df("SELECT COUNT(*) as n FROM masraf_iadeleri WHERE durum='Bekliyor'").iloc[0,0]
-    c5.metric(" Masraf Bekleyen", masraf_bekleyen)
+    c5.metric("Masraf Bekleyen", masraf_bekleyen)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -359,15 +359,15 @@ if page == " Ana Sayfa":
             st.info("Veri yok.")
 
     # Bildirimler
-    st.markdown("####  Bildirimler")
+    st.markdown("#### Bildirimler")
     df_notif = load_df("SELECT * FROM bildirimler ORDER BY created_at DESC LIMIT 20")
     if not df_notif.empty:
         for _, b in df_notif.iterrows():
             tip_class = {"bilgi":"notif-card notif-info","uyari":"notif-card","basari":"notif-card notif-success"}.get(b["tip"],"notif-card")
-            ikon = {"bilgi":"ℹ️","uyari":"⚠️","basari":"✅"}.get(b["tip"],"📌")
+            ikon = ""
             col_msg, col_del = st.columns([9,1])
             with col_msg:
-                st.markdown(f"<div class='{tip_class}'>{ikon} {b['mesaj']} <span style='color:#94a3b8;font-size:0.75rem;float:right;'>{str(b['created_at'])[:16]}</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='{tip_class}'>{b['mesaj']} <span style='color:#94a3b8;font-size:0.75rem;float:right;'>{str(b['created_at'])[:16]}</span></div>", unsafe_allow_html=True)
             with col_del:
                 if st.button("✕", key=f"del_n_{b['id']}"):
                     with conn.session as s:
@@ -380,33 +380,40 @@ if page == " Ana Sayfa":
                 s.commit()
             st.rerun()
     else:
-        st.success("Bildirim yok, her şey yolunda! ✅")
+        st.success("Bildirim yok, her sey yolunda.")
 
 # ══════════════════════════════════════════
 # PARÇA YÖNETİMİ
 # ══════════════════════════════════════════
-elif page == " Parça Yönetimi":
+elif page == "Parca Yonetimi":
     page_header("Parça Yönetimi", "Varlık ve Ar-Ge Envanteri")
 
     # Sadece Admin, Yönetici ve Mühendis ekleyebilir
     if IS_YONETICI or IS_MUHENDIS:
-        with st.expander("➕ Yeni Parça Ekle", expanded=False):
-            with st.form("p_form", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                ve = c1.text_input("Varlık Etiketi"); mo = c1.text_input("Model")
-                du = c1.selectbox("Durum", ["Aktif","Arızalı","Depoda","Hurda"]); sn = c1.text_input("Seri No")
-                yv = c2.text_input("Yazılım Versiyonu"); bc = c2.text_input("Bağlı Cihaz")
-                dn = c2.text_area("Durum Notu"); kt = c2.date_input("Kayıt Tarihi")
-                if st.form_submit_button("Kaydet", use_container_width=True):
-                    with conn.session as s:
-                        s.execute(text("""INSERT INTO parcalar (varlik_etiketi,model,durum,seri_no,yazilim_versiyonu,
-                                         bagli_cihaz,durum_notu,kayit_tarihi,ekleyen)
-                                         VALUES (:ve,:mo,:du,:sn,:yv,:bc,:dn,:kt,:ek)"""),
-                                  {"ve":ve,"mo":mo,"du":du,"sn":sn,"yv":yv,"bc":bc,"dn":dn,"kt":str(kt),"ek":st.session_state.user_name})
-                        s.commit()
-                    log_action(st.session_state.user_name, "Parça Eklendi", ve)
-                    bildirim_ekle(f"{st.session_state.user_name} yeni parça ekledi: {ve}", "bilgi", "Admin")
-                    islem_basarili("Parça eklendi!")
+        st.session_state.setdefault("show_add_parca", False)
+        if not st.session_state.show_add_parca:
+            if st.button("Yeni Parca Ekle", key="open_add_parca"):
+                st.session_state.show_add_parca = True
+                st.rerun()
+        if st.session_state.show_add_parca:
+            with st.expander("Yeni Parca Ekle", expanded=True):
+                with st.form("p_form", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    ve = c1.text_input("Varlık Etiketi"); mo = c1.text_input("Model")
+                    du = c1.selectbox("Durum", ["Aktif","Arızalı","Depoda","Hurda"]); sn = c1.text_input("Seri No")
+                    yv = c2.text_input("Yazılım Versiyonu"); bc = c2.text_input("Bağlı Cihaz")
+                    dn = c2.text_area("Durum Notu"); kt = c2.date_input("Kayıt Tarihi")
+                    if st.form_submit_button("Kaydet", use_container_width=True):
+                        with conn.session as s:
+                            s.execute(text("""INSERT INTO parcalar (varlik_etiketi,model,durum,seri_no,yazilim_versiyonu,
+                                             bagli_cihaz,durum_notu,kayit_tarihi,ekleyen)
+                                             VALUES (:ve,:mo,:du,:sn,:yv,:bc,:dn,:kt,:ek)"""),
+                                      {"ve":ve,"mo":mo,"du":du,"sn":sn,"yv":yv,"bc":bc,"dn":dn,"kt":str(kt),"ek":st.session_state.user_name})
+                            s.commit()
+                        log_action(st.session_state.user_name, "Parça Eklendi", ve)
+                        bildirim_ekle(f"{st.session_state.user_name} yeni parça ekledi: {ve}", "bilgi", "Admin")
+                        st.session_state.show_add_parca = False
+                        islem_basarili("Parça eklendi!")
 
         excel_import_bolumu("parcalar", {
             "Varlık Etiketi":"varlik_etiketi","Model":"model","Durum":"durum","Seri No":"seri_no",
@@ -415,7 +422,7 @@ elif page == " Parça Yönetimi":
 
     # Arama & Filtre
     col_ara, col_f = st.columns([2,1])
-    with col_ara: ara = st.text_input(" Ara", placeholder="Etiket, model, seri no...", key="p_ara")
+    with col_ara: ara = st.text_input("Ara", placeholder="Etiket, model, seri no...", key="p_ara")
     with col_f: df_f = st.selectbox("Durum Filtrele", ["Tümü","Aktif","Arızalı","Depoda","Hurda"])
 
     df = load_df("SELECT * FROM parcalar ORDER BY id DESC")
@@ -434,12 +441,12 @@ elif page == " Parça Yönetimi":
 
         disp = df.drop(columns=["id","created_at"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "parcalar.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "parcalar.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
         # Silme — sadece Admin ve Yönetici
         if IS_YONETICI or IS_MUHENDIS:
-            with st.expander("🗑️ Kayıt Sil"):
+            with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Parça ID", df["id"].tolist(), key="p_sil")
                 if st.button("Seçili Kaydı Sil", key="p_sil_btn"):
                     with conn.session as s:
@@ -453,27 +460,34 @@ elif page == " Parça Yönetimi":
 # ══════════════════════════════════════════
 # CİHAZ YÖNETİMİ
 # ══════════════════════════════════════════
-elif page == " Cihaz Yönetimi":
+elif page == "Cihaz Yonetimi":
     page_header("Cihaz Yönetimi", "Donanım İzleme")
 
     if IS_YONETICI or IS_MUHENDIS:
-        with st.expander("➕ Yeni Cihaz Ekle", expanded=False):
-            with st.form("c_form", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                ca = c1.text_input("Cihaz Adı"); ip = c1.text_input("IP Adresi")
-                mo = c1.text_input("Model"); du = c1.selectbox("Durum", ["Aktif","Testte","Bakımda","Depoda"])
-                ss = c2.text_input("Sensör Seri No"); ak = c2.text_input("Anakart Seri No")
-                sn = c2.text_input("Seri No"); nt = c2.text_area("Notlar")
-                if st.form_submit_button("Kaydet", use_container_width=True):
-                    with conn.session as s:
-                        s.execute(text("""INSERT INTO cihazlar (cihaz_adi,ip,model,takili_sensor_seri,
-                                         anakart_seri,durum,seri_no,notlar,ekleyen)
-                                         VALUES (:ca,:ip,:mo,:ss,:ak,:du,:sn,:nt,:ek)"""),
-                                  {"ca":ca,"ip":ip,"mo":mo,"ss":ss,"ak":ak,"du":du,"sn":sn,"nt":nt,"ek":st.session_state.user_name})
-                        s.commit()
-                    log_action(st.session_state.user_name, "Cihaz Eklendi", ca)
-                    bildirim_ekle(f"{st.session_state.user_name} yeni cihaz ekledi: {ca}", "bilgi", "Admin")
-                    islem_basarili("Cihaz eklendi!")
+        st.session_state.setdefault("show_add_cihaz", False)
+        if not st.session_state.show_add_cihaz:
+            if st.button("Yeni Cihaz Ekle", key="open_add_cihaz"):
+                st.session_state.show_add_cihaz = True
+                st.rerun()
+        if st.session_state.show_add_cihaz:
+            with st.expander("Yeni Cihaz Ekle", expanded=True):
+                with st.form("c_form", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    ca = c1.text_input("Cihaz Adı"); ip = c1.text_input("IP Adresi")
+                    mo = c1.text_input("Model"); du = c1.selectbox("Durum", ["Aktif","Testte","Bakımda","Depoda"])
+                    ss = c2.text_input("Sensör Seri No"); ak = c2.text_input("Anakart Seri No")
+                    sn = c2.text_input("Seri No"); nt = c2.text_area("Notlar")
+                    if st.form_submit_button("Kaydet", use_container_width=True):
+                        with conn.session as s:
+                            s.execute(text("""INSERT INTO cihazlar (cihaz_adi,ip,model,takili_sensor_seri,
+                                             anakart_seri,durum,seri_no,notlar,ekleyen)
+                                             VALUES (:ca,:ip,:mo,:ss,:ak,:du,:sn,:nt,:ek)"""),
+                                      {"ca":ca,"ip":ip,"mo":mo,"ss":ss,"ak":ak,"du":du,"sn":sn,"nt":nt,"ek":st.session_state.user_name})
+                            s.commit()
+                        log_action(st.session_state.user_name, "Cihaz Eklendi", ca)
+                        bildirim_ekle(f"{st.session_state.user_name} yeni cihaz ekledi: {ca}", "bilgi", "Admin")
+                        st.session_state.show_add_cihaz = False
+                        islem_basarili("Cihaz eklendi!")
 
         excel_import_bolumu("cihazlar", {
             "Cihaz Adı":"cihaz_adi","IP":"ip","Model":"model","Sensör Seri":"takili_sensor_seri",
@@ -481,7 +495,7 @@ elif page == " Cihaz Yönetimi":
         }, "cihaz", {"ekleyen": st.session_state.user_name})
 
     col_ara, col_f = st.columns([2,1])
-    with col_ara: ara = st.text_input(" Ara", key="c_ara")
+    with col_ara: ara = st.text_input("Ara", key="c_ara")
     with col_f: df_f = st.selectbox("Durum", ["Tümü","Aktif","Testte","Bakımda","Depoda"])
 
     df = load_df("SELECT * FROM cihazlar ORDER BY id DESC")
@@ -490,10 +504,10 @@ elif page == " Cihaz Yönetimi":
         if df_f != "Tümü": df = df[df["durum"] == df_f]
         disp = df.drop(columns=["id","created_at"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "cihazlar.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "cihazlar.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         if IS_YONETICI or IS_MUHENDIS:
-            with st.expander("🗑️ Kayıt Sil"):
+            with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Cihaz ID", df["id"].tolist(), key="c_sil")
                 if st.button("Seçili Kaydı Sil", key="c_sil_btn"):
                     with conn.session as s:
@@ -507,62 +521,69 @@ elif page == " Cihaz Yönetimi":
 # ══════════════════════════════════════════
 # KURUMSAL BÜTÇE
 # ══════════════════════════════════════════
-elif page == " Kurumsal Bütçe":
+elif page == "Kurumsal Butce":
     page_header("Kurumsal Bütçe", "Şirket Harcamaları")
 
     # Döviz Kuru Bilgisi
     kurlar = doviz_kurlari_getir()
     st.markdown(f"""
     <div class='kur-box'>
-        <b>💱 Anlık Döviz Kurları</b> &nbsp;|&nbsp; 
+        <b>Anlik Doviz Kurlari</b> &nbsp;|&nbsp; 
         1 TL = <b>${kurlar['USD']}</b> USD &nbsp;|&nbsp; 
         1 TL = <b>€{kurlar['EUR']}</b> EUR &nbsp;|&nbsp;
         <span style='color:#64748b;font-size:0.8rem;'>Kaynak: {kurlar['kaynak']} | {kurlar['guncelleme']}</span>
     </div>""", unsafe_allow_html=True)
 
-    with st.expander("➕ Yeni Harcama Girişi", expanded=False):
-        with st.form("h_form", clear_on_submit=True):
-            h1, h2, h3 = st.columns(3)
-            with h1:
-                h_tarih = st.date_input("Tarih", datetime.date.today())
-                h_kat   = st.selectbox("Kategori", ["Ar-Ge Alımı","Ofis Gideri","Seyahat","Maaş","Diğer"])
-            with h2:
-                h_pb    = st.selectbox("Para Birimi", ["TRY (₺)","USD ($)","EUR (€)"])
-                h_tutar = st.number_input("Tutar", min_value=0.0, step=100.0)
-            with h3:
-                h_fatura = st.text_input("Fatura / Fiş No")
-                h_acik   = st.text_area("Açıklama")
-            h_belge = st.file_uploader("Belge Ekle (opsiyonel)", type=["pdf","jpg","jpeg","png"])
+    st.session_state.setdefault("show_add_harcama", False)
+    if not st.session_state.show_add_harcama:
+        if st.button("Yeni Harcama Girisi", key="open_add_harcama"):
+            st.session_state.show_add_harcama = True
+            st.rerun()
+    if st.session_state.show_add_harcama:
+        with st.expander("Yeni Harcama Girisi", expanded=True):
+            with st.form("h_form", clear_on_submit=True):
+                h1, h2, h3 = st.columns(3)
+                with h1:
+                    h_tarih = st.date_input("Tarih", datetime.date.today())
+                    h_kat   = st.selectbox("Kategori", ["Ar-Ge Alımı","Ofis Gideri","Seyahat","Maaş","Diğer"])
+                with h2:
+                    h_pb    = st.selectbox("Para Birimi", ["TRY (₺)","USD ($)","EUR (€)"])
+                    h_tutar = st.number_input("Tutar", min_value=0.0, step=100.0)
+                with h3:
+                    h_fatura = st.text_input("Fatura / Fiş No")
+                    h_acik   = st.text_area("Açıklama")
+                h_belge = st.file_uploader("Belge Ekle (opsiyonel)", type=["pdf","jpg","jpeg","png"])
 
-            if st.form_submit_button("Kaydet", use_container_width=True):
-                pb_kod = h_pb.split(" ")[0]
-                # Tutarı TL'ye çevir
-                if pb_kod == "TRY":
-                    tutar_tl = h_tutar
-                elif pb_kod == "USD":
-                    tutar_tl = h_tutar / kurlar["USD"]
-                else:
-                    tutar_tl = h_tutar / kurlar["EUR"]
+                if st.form_submit_button("Kaydet", use_container_width=True):
+                    pb_kod = h_pb.split(" ")[0]
+                    # Tutarı TL'ye çevir
+                    if pb_kod == "TRY":
+                        tutar_tl = h_tutar
+                    elif pb_kod == "USD":
+                        tutar_tl = h_tutar / kurlar["USD"]
+                    else:
+                        tutar_tl = h_tutar / kurlar["EUR"]
 
-                tutar_usd = tutar_tl * kurlar["USD"]
-                tutar_eur = tutar_tl * kurlar["EUR"]
+                    tutar_usd = tutar_tl * kurlar["USD"]
+                    tutar_eur = tutar_tl * kurlar["EUR"]
 
-                belge_d = h_belge.read() if h_belge else None
-                belge_a = h_belge.name  if h_belge else None
+                    belge_d = h_belge.read() if h_belge else None
+                    belge_a = h_belge.name  if h_belge else None
 
-                with conn.session as s:
-                    s.execute(text("""INSERT INTO harcamalar
-                        (tarih,kategori,tutar,para_birimi,tutar_usd,tutar_eur,kur_usd,kur_eur,
-                         fatura_no,aciklama,giren,belge_adi,belge_data)
-                        VALUES (:t,:k,:tu,:pb,:tusd,:teur,:kusd,:keur,:f,:a,:g,:ba,:bd)"""),
-                        {"t":str(h_tarih),"k":h_kat,"tu":tutar_tl,"pb":pb_kod,
-                         "tusd":round(tutar_usd,2),"teur":round(tutar_eur,2),
-                         "kusd":kurlar["USD"],"keur":kurlar["EUR"],
-                         "f":h_fatura,"a":h_acik,"g":st.session_state.user_name,
-                         "ba":belge_a,"bd":belge_d})
-                    s.commit()
-                log_action(st.session_state.user_name, "Harcama Eklendi", f"{h_kat} - {h_tutar} {pb_kod}")
-                islem_basarili("Harcama kaydedildi!")
+                    with conn.session as s:
+                        s.execute(text("""INSERT INTO harcamalar
+                            (tarih,kategori,tutar,para_birimi,tutar_usd,tutar_eur,kur_usd,kur_eur,
+                             fatura_no,aciklama,giren,belge_adi,belge_data)
+                            VALUES (:t,:k,:tu,:pb,:tusd,:teur,:kusd,:keur,:f,:a,:g,:ba,:bd)"""),
+                            {"t":str(h_tarih),"k":h_kat,"tu":tutar_tl,"pb":pb_kod,
+                             "tusd":round(tutar_usd,2),"teur":round(tutar_eur,2),
+                             "kusd":kurlar["USD"],"keur":kurlar["EUR"],
+                             "f":h_fatura,"a":h_acik,"g":st.session_state.user_name,
+                             "ba":belge_a,"bd":belge_d})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Harcama Eklendi", f"{h_kat} - {h_tutar} {pb_kod}")
+                    st.session_state.show_add_harcama = False
+                    islem_basarili("Harcama kaydedildi!")
 
     excel_import_bolumu("harcamalar", {
         "Tarih":"tarih","Kategori":"kategori","Tutar (TL)":"tutar","Para Birimi":"para_birimi",
@@ -584,7 +605,7 @@ elif page == " Kurumsal Bütçe":
 
         # Filtre
         col_ara, col_f = st.columns([2,1])
-        with col_ara: ara = st.text_input(" Ara", key="h_ara")
+        with col_ara: ara = st.text_input("Ara", key="h_ara")
         with col_f: kat_f = st.selectbox("Kategori", ["Tümü","Ar-Ge Alımı","Ofis Gideri","Seyahat","Maaş","Diğer"])
         if ara: df = df[df.apply(lambda r: ara.lower() in str(r).lower(), axis=1)]
         if kat_f != "Tümü": df = df[df["kategori"] == kat_f]
@@ -592,11 +613,11 @@ elif page == " Kurumsal Bütçe":
         disp = df.drop(columns=["id"], errors="ignore")
         disp.columns = ["Tarih","Kategori","Tutar (₺)","Para Birimi","Tutar ($)","Tutar (€)","USD Kuru","Fatura No","Açıklama","Giren"]
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "butce.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "butce.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
         if IS_YONETICI:
-            with st.expander("🗑️ Kayıt Sil"):
+            with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek ID", df["id"].tolist() if "id" in df.columns else [], key="h_sil")
                 if st.button("Sil", key="h_sil_btn"):
                     with conn.session as s:
@@ -609,49 +630,67 @@ elif page == " Kurumsal Bütçe":
 # ══════════════════════════════════════════
 # MASRAF BEYANI
 # ══════════════════════════════════════════
-elif page == " Masraf Beyanı":
+elif page == "Masraf Beyani":
     page_header("Masraf Beyanı", "Bireysel Harcama İade Talebi")
     is_yon = IS_YONETICI
-    tab1, tab2 = st.tabs(["📤 Talebim", "🗂️ Yönetim Paneli"])
+    tab1, tab2 = st.tabs(["Talebim", "Yonetim Paneli"])
 
     with tab1:
-        with st.expander("➕ Yeni Masraf Talebi", expanded=True):
-            with st.form("m_form"):
-                m1, m2 = st.columns(2)
-                with m1:
-                    m_tarih = st.date_input("Harcama Tarihi", datetime.date.today())
-                    m_kat   = st.selectbox("Kategori", ["Yemek","Ulaşım","Konaklama","Ofis Malzemesi","Müşteri Ağırlama","Eğitim","Diğer"])
-                    m_tutar = st.number_input("Tutar (₺)", min_value=0.0, step=10.0)
-                with m2:
-                    m_acik  = st.text_area("Açıklama", height=100)
-                    m_dosya = st.file_uploader("Fiş / Fatura", type=["jpg","jpeg","png","pdf"])
-                if st.form_submit_button("Onaya Gönder", use_container_width=True):
-                    if m_tutar <= 0:
-                        st.error("Tutar 0'dan büyük olmalı.")
-                    else:
-                        d_data = m_dosya.read() if m_dosya else None
-                        d_adi  = m_dosya.name  if m_dosya else None
-                        with conn.session as s:
-                            s.execute(text("""INSERT INTO masraf_iadeleri
-                                (talep_eden,talep_eden_email,tarih,kategori,tutar,aciklama,fisbelge_adi,fisbelge)
-                                VALUES (:te,:tee,:t,:k,:tu,:a,:da,:dd)"""),
-                                {"te":st.session_state.user_name,"tee":st.session_state.user_email,
-                                 "t":str(m_tarih),"k":m_kat,"tu":m_tutar,"a":m_acik,"da":d_adi,"dd":d_data})
-                            s.commit()
-                        log_action(st.session_state.user_name, "Masraf Talebi", f"{m_kat} - {m_tutar}₺")
-                        for ym in yonetici_emailleri():
-                            mail_gonder(ym, "Yeni Masraf İade Talebi",
-                                f"""<p><b>{st.session_state.user_name}</b> masraf talebi gönderdi:</p>
-                                <p><b>Kategori:</b> {m_kat} | <b>Tutar:</b> {m_tutar:,.2f}₺</p>""")
-                        bildirim_ekle(f"{st.session_state.user_name} masraf talebi gönderdi ({m_tutar:,.0f}₺)", "uyari", "Admin")
-                        islem_basarili("Talep gönderildi!")
+        st.session_state.setdefault("show_add_masraf", False)
+        if not st.session_state.show_add_masraf:
+            if st.button("Yeni Masraf Talebi", key="open_add_masraf"):
+                st.session_state.show_add_masraf = True
+                st.rerun()
+        if st.session_state.show_add_masraf:
+            with st.expander("Yeni Masraf Talebi", expanded=True):
+                with st.form("m_form"):
+                    m1, m2 = st.columns(2)
+                    with m1:
+                        m_tarih = st.date_input("Harcama Tarihi", datetime.date.today())
+                        m_kat   = st.selectbox("Kategori", ["Yemek","Ulaşım","Konaklama","Ofis Malzemesi","Müşteri Ağırlama","Eğitim","Diğer"])
+                        m_tutar = st.number_input("Tutar (₺)", min_value=0.0, step=10.0)
+                    with m2:
+                        m_acik  = st.text_area("Açıklama", height=100)
+                        m_dosya = st.file_uploader("Fiş / Fatura", type=["jpg","jpeg","png","pdf"])
+                    if st.form_submit_button("Onaya Gönder", use_container_width=True):
+                        if m_tutar <= 0:
+                            st.error("Tutar 0'dan büyük olmalı.")
+                        else:
+                            d_data = m_dosya.read() if m_dosya else None
+                            d_adi  = m_dosya.name  if m_dosya else None
+                            with conn.session as s:
+                                s.execute(text("""INSERT INTO masraf_iadeleri
+                                    (talep_eden,talep_eden_email,tarih,kategori,tutar,aciklama,fisbelge_adi,fisbelge)
+                                    VALUES (:te,:tee,:t,:k,:tu,:a,:da,:dd)"""),
+                                    {"te":st.session_state.user_name,"tee":st.session_state.user_email,
+                                     "t":str(m_tarih),"k":m_kat,"tu":m_tutar,"a":m_acik,"da":d_adi,"dd":d_data})
+                                s.commit()
+                            log_action(st.session_state.user_name, "Masraf Talebi", f"{m_kat} - {m_tutar}₺")
+                            for ym in yonetici_emailleri():
+                                mail_gonder(ym, "Yeni Masraf İade Talebi",
+                                    f"""<p><b>{st.session_state.user_name}</b> masraf talebi gönderdi:</p>
+                                    <p><b>Kategori:</b> {m_kat} | <b>Tutar:</b> {m_tutar:,.2f}₺</p>""")
+                            bildirim_ekle(f"{st.session_state.user_name} masraf talebi gönderdi ({m_tutar:,.0f}₺)", "uyari", "Admin")
+                            st.session_state.show_add_masraf = False
+                            islem_basarili("Talep gönderildi!")
 
         df = load_df("SELECT tarih,kategori,tutar,aciklama,durum,yonetici_notu,odeme_tarihi FROM masraf_iadeleri WHERE talep_eden_email=:e ORDER BY id DESC",
                      {"e": st.session_state.user_email})
         if not df.empty:
             st.dataframe(df, use_container_width=True, hide_index=True)
-            st.download_button("📥 Excel İndir", excel_export(df), "masraf_taleplerim.xlsx",
+            st.download_button("Excel Indir", excel_export(df), "masraf_taleplerim.xlsx",
                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            with st.expander("Talep Sil"):
+                self_ids = load_df("SELECT id, tarih, kategori, tutar FROM masraf_iadeleri WHERE talep_eden_email=:e ORDER BY id DESC",
+                                   {"e": st.session_state.user_email})
+                if not self_ids.empty:
+                    sil_id = st.selectbox("Silinecek Talep ID", self_ids["id"].tolist(), key="m_self_sil")
+                    if st.button("Secili Talebi Sil", key="m_self_sil_btn"):
+                        with conn.session as s:
+                            s.execute(text("DELETE FROM masraf_iadeleri WHERE id=:i AND talep_eden_email=:e"),
+                                      {"i": sil_id, "e": st.session_state.user_email})
+                            s.commit()
+                        islem_basarili("Talep silindi.")
         else:
             st.info("Henüz masraf talebiniz yok.")
 
@@ -692,7 +731,7 @@ elif page == " Masraf Beyanı":
                         col_not, col_on, col_red = st.columns([3,1,1])
                         with col_not: yon_not = st.text_input("Not", key=f"mn_{r['id']}")
                         with col_on:
-                            if st.button("✅ Onayla", key=f"mon_{r['id']}"):
+                            if st.button("Onayla", key=f"mon_{r['id']}"):
                                 with conn.session as s:
                                     s.execute(text("UPDATE masraf_iadeleri SET durum='Onaylandı',yonetici_notu=:n WHERE id=:i"),
                                               {"n": yon_not, "i": r["id"]})
@@ -704,7 +743,7 @@ elif page == " Masraf Beyanı":
                                 log_action(st.session_state.user_name, "Masraf Onaylandı", f"ID:{r['id']}")
                                 st.rerun()
                         with col_red:
-                            if st.button("❌ Reddet", key=f"mred_{r['id']}"):
+                            if st.button("Reddet", key=f"mred_{r['id']}"):
                                 with conn.session as s:
                                     s.execute(text("UPDATE masraf_iadeleri SET durum='Reddedildi',yonetici_notu=:n WHERE id=:i"),
                                               {"n": yon_not, "i": r["id"]})
@@ -718,13 +757,13 @@ elif page == " Masraf Beyanı":
 
                     elif r["durum"] == "Onaylandı":
                         dekont_f = st.file_uploader("Dekont Yükle", type=["jpg","jpeg","png","pdf"], key=f"dek_{r['id']}")
-                        if dekont_f and st.button(" Ödendi Olarak İşaretle", key=f"ode_{r['id']}"):
+                        if dekont_f and st.button("Odendi Olarak Isaretle", key=f"ode_{r['id']}"):
                             odeme_t = str(datetime.date.today())
                             with conn.session as s:
                                 s.execute(text("UPDATE masraf_iadeleri SET durum='Ödendi',dekont=:d,dekont_adi=:da,odeme_tarihi=:ot WHERE id=:i"),
                                           {"d": dekont_f.read(), "da": dekont_f.name, "ot": odeme_t, "i": r["id"]})
                                 s.commit()
-                            mail_gonder(r["talep_eden_email"], "Masraf İadeniz Ödendi ",
+                            mail_gonder(r["talep_eden_email"], "Masraf İadeniz Ödendi 💰",
                                 f"""<p>Merhaba <b>{r['talep_eden']}</b>,<br>
                                 <b>{r['tutar']:,.2f}₺</b> tutarındaki masraf iadeniz ödendi.<br>
                                 Ödeme Tarihi: <b>{odeme_t}</b></p>""")
@@ -735,28 +774,42 @@ elif page == " Masraf Beyanı":
 
                 exp_df = goster[["talep_eden","tarih","kategori","tutar","durum","yonetici_notu","odeme_tarihi"]].copy()
                 exp_df.columns = ["Çalışan","Tarih","Kategori","Tutar (₺)","Durum","Yönetici Notu","Ödeme Tarihi"]
-                st.download_button("📥 Excel İndir", excel_export(exp_df), "masraf_iadeleri.xlsx",
+                st.download_button("Excel Indir", excel_export(exp_df), "masraf_iadeleri.xlsx",
                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                with st.expander("Kayit Sil"):
+                    sil_id = st.selectbox("Silinecek Talep ID", goster["id"].tolist(), key="m_admin_sil")
+                    if st.button("Secili Kaydi Sil", key="m_admin_sil_btn"):
+                        with conn.session as s:
+                            s.execute(text("DELETE FROM masraf_iadeleri WHERE id=:i"), {"i": sil_id})
+                            s.commit()
+                        islem_basarili("Kayit silindi.")
 
 # ══════════════════════════════════════════
 # GÖREVLER
 # ══════════════════════════════════════════
-elif page == " Görevler":
+elif page == "Gorevler":
     page_header("Proje & Görev Takibi", "Kanban Board")
-    with st.expander("➕ Yeni Görev", expanded=False):
-        with st.form("g_form", clear_on_submit=True):
-            g1, g2 = st.columns(2)
-            gb = g1.text_input("Görev Başlığı"); gp = g1.text_input("Proje"); ga = g1.text_input("Atanan")
-            go = g2.selectbox("Öncelik", ["Düşük","Orta","Yüksek","Kritik"])
-            gd = g2.selectbox("Durum", ["Bekliyor","Devam Ediyor","İncelemede","Tamamlandı"])
-            gt = g2.date_input("Son Tarih"); gac = st.text_area("Açıklama")
-            if st.form_submit_button("Ekle", use_container_width=True):
-                with conn.session as s:
-                    s.execute(text("INSERT INTO gorevler (baslik,aciklama,atanan,durum,oncelik,son_tarih,proje,olusturan) VALUES (:b,:ac,:a,:d,:o,:t,:p,:ok)"),
-                              {"b":gb,"ac":gac,"a":ga,"d":gd,"o":go,"t":str(gt),"p":gp,"ok":st.session_state.user_name})
-                    s.commit()
-                log_action(st.session_state.user_name, "Görev Eklendi", gb)
-                islem_basarili("Görev eklendi!")
+    st.session_state.setdefault("show_add_gorev", False)
+    if not st.session_state.show_add_gorev:
+        if st.button("Yeni Gorev", key="open_add_gorev"):
+            st.session_state.show_add_gorev = True
+            st.rerun()
+    if st.session_state.show_add_gorev:
+        with st.expander("Yeni Gorev", expanded=True):
+            with st.form("g_form", clear_on_submit=True):
+                g1, g2 = st.columns(2)
+                gb = g1.text_input("Görev Başlığı"); gp = g1.text_input("Proje"); ga = g1.text_input("Atanan")
+                go = g2.selectbox("Öncelik", ["Düşük","Orta","Yüksek","Kritik"])
+                gd = g2.selectbox("Durum", ["Bekliyor","Devam Ediyor","İncelemede","Tamamlandı"])
+                gt = g2.date_input("Son Tarih"); gac = st.text_area("Açıklama")
+                if st.form_submit_button("Ekle", use_container_width=True):
+                    with conn.session as s:
+                        s.execute(text("INSERT INTO gorevler (baslik,aciklama,atanan,durum,oncelik,son_tarih,proje,olusturan) VALUES (:b,:ac,:a,:d,:o,:t,:p,:ok)"),
+                                  {"b":gb,"ac":gac,"a":ga,"d":gd,"o":go,"t":str(gt),"p":gp,"ok":st.session_state.user_name})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Görev Eklendi", gb)
+                    st.session_state.show_add_gorev = False
+                    islem_basarili("Görev eklendi!")
 
     excel_import_bolumu("gorevler", {
         "Başlık":"baslik","Proje":"proje","Atanan":"atanan",
@@ -778,16 +831,16 @@ elif page == " Görevler":
                                 border-left:4px solid {r};box-shadow:0 1px 4px rgba(0,0,0,0.08)'>
                         <div style='font-weight:600;font-size:0.88rem;'>{g['baslik']}</div>
                         <div style='font-size:0.75rem;color:#64748b;margin-top:4px;'>
-                             {g['atanan'] or '—'} |  {str(g['son_tarih'])[:10] if g['son_tarih'] else '—'}
+                            {g['atanan'] or '—'} | {str(g['son_tarih'])[:10] if g['son_tarih'] else '—'}
                         </div>
                     </div>""", unsafe_allow_html=True)
         st.markdown("---")
         disp = df.drop(columns=["id","created_at"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "gorevler.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "gorevler.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         if IS_YONETICI:
-            with st.expander("🗑️ Kayıt Sil"):
+            with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Görev ID", df["id"].tolist(), key="g_sil")
                 if st.button("Sil", key="g_sil_btn"):
                     with conn.session as s:
@@ -800,22 +853,29 @@ elif page == " Görevler":
 # ══════════════════════════════════════════
 # PERSONEL
 # ══════════════════════════════════════════
-elif page == " Personel":
+elif page == "Personel":
     page_header("İnsan Kaynakları", "Personel Listesi")
-    with st.expander("➕ Yeni Personel Ekle", expanded=False):
-        with st.form("per_form", clear_on_submit=True):
-            p1, p2 = st.columns(2)
-            pi = p1.text_input("Ad Soyad"); pe = p1.text_input("E-posta"); pt = p1.text_input("Telefon")
-            pp = p2.text_input("Pozisyon")
-            pd_ = p2.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
-            pb = p2.date_input("İşe Başlama"); pn = st.text_area("Notlar")
-            if st.form_submit_button("Kaydet", use_container_width=True):
-                with conn.session as s:
-                    s.execute(text("INSERT INTO personel (isim,email,pozisyon,departman,ise_baslama,telefon,notlar) VALUES (:i,:e,:p,:d,:b,:t,:n)"),
-                              {"i":pi,"e":pe,"p":pp,"d":pd_,"b":str(pb),"t":pt,"n":pn})
-                    s.commit()
-                log_action(st.session_state.user_name, "Personel Eklendi", pi)
-                islem_basarili("Personel eklendi!")
+    st.session_state.setdefault("show_add_personel", False)
+    if not st.session_state.show_add_personel:
+        if st.button("Yeni Personel Ekle", key="open_add_personel"):
+            st.session_state.show_add_personel = True
+            st.rerun()
+    if st.session_state.show_add_personel:
+        with st.expander("Yeni Personel Ekle", expanded=True):
+            with st.form("per_form", clear_on_submit=True):
+                p1, p2 = st.columns(2)
+                pi = p1.text_input("Ad Soyad"); pe = p1.text_input("E-posta"); pt = p1.text_input("Telefon")
+                pp = p2.text_input("Pozisyon")
+                pd_ = p2.selectbox("Departman", ["Yazılım","Donanım","Ar-Ge","Yönetim","Satış","Diğer"])
+                pb = p2.date_input("İşe Başlama"); pn = st.text_area("Notlar")
+                if st.form_submit_button("Kaydet", use_container_width=True):
+                    with conn.session as s:
+                        s.execute(text("INSERT INTO personel (isim,email,pozisyon,departman,ise_baslama,telefon,notlar) VALUES (:i,:e,:p,:d,:b,:t,:n)"),
+                                  {"i":pi,"e":pe,"p":pp,"d":pd_,"b":str(pb),"t":pt,"n":pn})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Personel Eklendi", pi)
+                    st.session_state.show_add_personel = False
+                    islem_basarili("Personel eklendi!")
 
     excel_import_bolumu("personel", {
         "Ad Soyad":"isim","E-posta":"email","Pozisyon":"pozisyon",
@@ -826,10 +886,10 @@ elif page == " Personel":
     if not df.empty:
         disp = df.drop(columns=["id","created_at"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "personel.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "personel.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         if IS_YONETICI:
-            with st.expander("🗑️ Kayıt Sil"):
+            with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Personel ID", df["id"].tolist(), key="per_sil")
                 if st.button("Sil", key="per_sil_btn"):
                     with conn.session as s:
@@ -842,7 +902,7 @@ elif page == " Personel":
 # ══════════════════════════════════════════
 # ONAY PANELİ
 # ══════════════════════════════════════════
-elif page == "✅ Onay Paneli":
+elif page == "Onay Paneli":
     page_header("Onay Paneli", "Masraf Onayları")
     df = load_df("SELECT * FROM masraf_iadeleri WHERE durum='Bekliyor' ORDER BY id DESC")
     if not df.empty:
@@ -854,7 +914,7 @@ elif page == "✅ Onay Paneli":
             with col_not:
                 not_ = st.text_input("Yönetici Notu", key=f"n_{row['id']}")
             with col_on:
-                if st.button("✅ Onayla", key=f"o_{row['id']}"):
+                if st.button("Onayla", key=f"o_{row['id']}"):
                     with conn.session as s:
                         s.execute(text("UPDATE masraf_iadeleri SET durum='Onaylandı',yonetici_notu=:n WHERE id=:i"),
                                   {"n":not_,"i":row["id"]})
@@ -864,7 +924,7 @@ elif page == "✅ Onay Paneli":
                     log_action(st.session_state.user_name, "Masraf Onaylandı", f"ID:{row['id']}")
                     st.rerun()
             with col_red:
-                if st.button("❌ Reddet", key=f"r_{row['id']}"):
+                if st.button("Reddet", key=f"r_{row['id']}"):
                     with conn.session as s:
                         s.execute(text("UPDATE masraf_iadeleri SET durum='Reddedildi',yonetici_notu=:n WHERE id=:i"),
                                   {"n":not_,"i":row["id"]})
@@ -873,28 +933,35 @@ elif page == "✅ Onay Paneli":
                     st.rerun()
             st.markdown("---")
     else:
-        st.success("✅ Bekleyen masraf talebi yok!")
+        st.success("Bekleyen masraf talebi yok.")
 
 # ══════════════════════════════════════════
 # AUDİT LOG
 # ══════════════════════════════════════════
-elif page == " Audit Log":
+elif page == "Audit Log":
     page_header("Audit Log", "Sistem İşlem Geçmişi")
     df = load_df("SELECT * FROM audit_log ORDER BY id DESC LIMIT 500")
     if not df.empty:
-        ara = st.text_input(" Ara")
+        ara = st.text_input("Ara")
         if ara: df = df[df.apply(lambda r: ara.lower() in str(r).lower(), axis=1)]
         disp = df.drop(columns=["id"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
-        st.download_button("📥 Excel İndir", excel_export(disp), "audit_log.xlsx",
+        st.download_button("Excel Indir", excel_export(disp), "audit_log.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        with st.expander("Kayit Sil"):
+            sil_id = st.selectbox("Silinecek Log ID", df["id"].tolist(), key="audit_sil")
+            if st.button("Secili Logu Sil", key="audit_sil_btn"):
+                with conn.session as s:
+                    s.execute(text("DELETE FROM audit_log WHERE id=:i"), {"i": sil_id})
+                    s.commit()
+                islem_basarili("Log kaydi silindi.")
     else:
         st.info("Log kaydı yok.")
 
 # ══════════════════════════════════════════
 # YETKİLER
 # ══════════════════════════════════════════
-elif page == " Yetkiler":
+elif page == "Yetkiler":
     page_header("Yetkilendirme", "Kullanıcı Rol Yönetimi")
     df = load_df("SELECT id, email, isim, rol FROM kullanicilar ORDER BY id")
     if not df.empty:
@@ -915,7 +982,7 @@ elif page == " Yetkiler":
 # ══════════════════════════════════════════
 # AYARLAR
 # ══════════════════════════════════════════
-elif page == " Ayarlar":
+elif page == "Ayarlar":
     page_header("Ayarlar", "Profil & Şifre Yönetimi")
     st.markdown(f"**İsim:** {st.session_state.user_name}")
     st.markdown(f"**E-posta:** {st.session_state.user_email}")
