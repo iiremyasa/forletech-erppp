@@ -74,9 +74,12 @@ def log_action(kullanici, aksiyon, detay=""):
         s.commit()
 
 def bildirim_ekle(mesaj, tip="bilgi", hedef_rol="Tumu"):
-    with conn.session as s:
-        s.execute(text("INSERT INTO bildirimler (tip,mesaj,hedef_rol) VALUES (:t,:m,:h)"), {"t":tip,"m":mesaj,"h":hedef_rol})
-        s.commit()
+    try:
+        with conn.session as s:
+            s.execute(text("INSERT INTO bildirimler (tip,mesaj,hedef_rol) VALUES (:t,:m,:h)"), {"t":tip,"m":mesaj,"h":hedef_rol})
+            s.commit()
+    except Exception:
+        pass  # Tablo yoksa sessizce geç
 
 def islem_basarili(msg="İşlem kaydedildi!"):
     st.toast(f"✅ {msg}", icon="✅")
@@ -101,23 +104,40 @@ def excel_import_bolumu(table, col_map, key, ekstra_cols=None):
         dosya = st.file_uploader("Excel Yükle (.xlsx)", type=["xlsx"], key=f"upl_{key}")
         if dosya:
             try:
-                df_i = pd.read_excel(dosya).rename(columns=col_map)
-                df_i = df_i[[c for c in col_map.values() if c in df_i.columns]]
+                df_i = pd.read_excel(dosya)
+                # Kolon adlarini esle
+                df_i = df_i.rename(columns=col_map)
+                # Sadece bilinen kolonlari al
+                gecerli_cols = [c for c in col_map.values() if c in df_i.columns]
+                df_i = df_i[gecerli_cols].copy()
+                # Ekstra kolonlari ekle
                 if ekstra_cols:
                     for k, v in ekstra_cols.items():
                         df_i[k] = v
+                # NaN temizle
+                df_i = df_i.fillna("")
                 st.dataframe(df_i, use_container_width=True, hide_index=True)
-                if st.button("İçe Aktar", key=f"imp_{key}"):
+                if st.button(f"✅ {len(df_i)} Kaydı İçe Aktar", key=f"imp_{key}"):
+                    basarili = 0
+                    hatali = 0
                     with conn.session as s:
                         for _, row in df_i.iterrows():
-                            cols = ", ".join(row.index)
-                            vals = ", ".join([f":{c}" for c in row.index])
-                            s.execute(text(f"INSERT INTO {table} ({cols}) VALUES ({vals})"), dict(row))
+                            try:
+                                row_dict = {str(k): (None if v == "" else v) for k, v in row.items()}
+                                col_names = ", ".join(row_dict.keys())
+                                col_params = ", ".join([f":{k}" for k in row_dict.keys()])
+                                s.execute(text(f"INSERT INTO {table} ({col_names}) VALUES ({col_params})"), row_dict)
+                                basarili += 1
+                            except Exception:
+                                hatali += 1
                         s.commit()
-                    st.success(f"{len(df_i)} kayıt eklendi.")
-                    st.rerun()
+                    if basarili > 0:
+                        st.success(f"{basarili} kayıt eklendi." + (f" {hatali} kayıt atlandı." if hatali else ""))
+                        st.rerun()
+                    else:
+                        st.error("Hiçbir kayıt eklenemedi. Şablon formatını kontrol edin.")
             except Exception as e:
-                st.error(f"Hata: {e}")
+                st.error(f"Dosya okunamadı: {e}")
 
 @st.cache_data(ttl=3600)
 def doviz_kurlari_getir():
@@ -153,10 +173,18 @@ def mail_gonder(alici, konu, icerik):
                 <p style="color:#94a3b8;font-size:0.8rem;">Bu mail otomatik gönderilmiştir.</p>
             </div>
         </div>""", "html", "utf-8"))
-        with smtplib.SMTP(cfg["server"], int(cfg["port"])) as s_:
-            s_.ehlo(); s_.starttls()
-            s_.login(cfg["email"], cfg["password"])
-            s_.sendmail(cfg["email"], alici, msg.as_string())
+        port = int(cfg["port"])
+        if port == 465:
+            import ssl
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(cfg["server"], port, context=ctx) as s_:
+                s_.login(cfg["email"], cfg["password"])
+                s_.sendmail(cfg["email"], alici, msg.as_string())
+        else:
+            with smtplib.SMTP(cfg["server"], port, timeout=10) as s_:
+                s_.ehlo(); s_.starttls()
+                s_.login(cfg["email"], cfg["password"])
+                s_.sendmail(cfg["email"], alici, msg.as_string())
         return True
     except Exception as e:
         st.warning(f"Mail gönderilemedi: {e}")
@@ -223,9 +251,11 @@ if not st.session_state.authenticated:
                                     </div>
                                     <p style="color:#64748b;">Bu kod <b>10 dakika</b> geçerlidir.</p>""")
                                 if ok:
-                                    st.session_state.kayit_bekliyor = True
-                                    st.session_state.kayit_email = email2
+                                    st.session_state["kayit_bekliyor"] = True
+                                    st.session_state["kayit_email"] = email2
                                     st.rerun()
+                                else:
+                                    st.error("Mail gönderilemedi. Lütfen sistem yöneticisiyle iletişime geçin.")
             else:
                 st.info(f"**{st.session_state.kayit_email}** adresine 6 haneli kod gönderildi.")
                 with st.form("dogrulama"):
