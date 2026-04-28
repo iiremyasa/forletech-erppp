@@ -198,7 +198,7 @@ if not st.session_state.authenticated:
     st.markdown("<div style='text-align:center;padding:50px 0;'><h1 style='color:#0f172a;font-size:2.5rem;'>🚀 FORLE TECH</h1><p style='color:#64748b;'>Kurumsal ERP Portalı</p></div>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
-        tab1, tab2 = st.tabs(["🔑 Giriş Yap", "📝 Yeni Hesap"])
+        tab1, tab2 = st.tabs([" Giriş Yap", " Yeni Hesap"])
         with tab1:
             with st.form("login"):
                 em = st.text_input("E-posta", placeholder="isim@forleai.com").strip().lower()
@@ -304,10 +304,10 @@ with st.sidebar:
         <span class='role-badge'>{USER_ROL}</span>
     </div>""", unsafe_allow_html=True)
 
-    menuler = ["📊 Ana Sayfa", "📦 Parça Yönetimi", "💻 Cihaz Yönetimi", "🧾 Masraf Beyanı", "📋 Görevler", "⚙️ Ayarlar"]
+    menuler = [" Ana Sayfa", " Parça Yönetimi", " Cihaz Yönetimi", " Masraf Beyanı", " Görevler", " Ayarlar"]
     if IS_YONETICI:
-        menuler.insert(3, "💰 Kurumsal Bütçe")
-        menuler += ["👥 Personel", "✅ Onay Paneli", "🛡️ Audit Log", "🔑 Yetkiler"]
+        menuler.insert(3, " Kurumsal Bütçe")
+        menuler += [" Personel", " Onay Paneli", " Audit Log", " Yetkiler"]
 
     # Okunmamış bildirim sayısı
     try:
@@ -320,7 +320,7 @@ with st.sidebar:
 
     page = st.radio("Menü", menuler, label_visibility="collapsed")
     st.markdown("---")
-    if st.button("🚪 Çıkış Yap", use_container_width=True):
+    if st.button(" Çıkış Yap", use_container_width=True):
         log_action(st.session_state.user_name, "Çıkış")
         st.session_state.authenticated = False
         st.rerun()
@@ -328,16 +328,16 @@ with st.sidebar:
 # ══════════════════════════════════════════
 # ANA SAYFA
 # ══════════════════════════════════════════
-if page == "📊 Ana Sayfa":
+if page == " Ana Sayfa":
     page_header("Kontrol Paneli", "Operasyonel Özet")
 
     c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric("📦 Parça",    load_df("SELECT COUNT(*) as n FROM parcalar").iloc[0,0])
-    c2.metric("💻 Cihaz",    load_df("SELECT COUNT(*) as n FROM cihazlar").iloc[0,0])
-    c3.metric("📋 Görev",    load_df("SELECT COUNT(*) as n FROM gorevler WHERE durum!='Tamamlandı'").iloc[0,0])
-    c4.metric("👥 Personel", load_df("SELECT COUNT(*) as n FROM personel").iloc[0,0])
+    c1.metric(" Parça",    load_df("SELECT COUNT(*) as n FROM parcalar").iloc[0,0])
+    c2.metric(" Cihaz",    load_df("SELECT COUNT(*) as n FROM cihazlar").iloc[0,0])
+    c3.metric(" Görev",    load_df("SELECT COUNT(*) as n FROM gorevler WHERE durum!='Tamamlandı'").iloc[0,0])
+    c4.metric(" Personel", load_df("SELECT COUNT(*) as n FROM personel").iloc[0,0])
     masraf_bekleyen = load_df("SELECT COUNT(*) as n FROM masraf_iadeleri WHERE durum='Bekliyor'").iloc[0,0]
-    c5.metric("🧾 Masraf Bekleyen", masraf_bekleyen)
+    c5.metric(" Masraf Bekleyen", masraf_bekleyen)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -359,7 +359,7 @@ if page == "📊 Ana Sayfa":
             st.info("Veri yok.")
 
     # Bildirimler
-    st.markdown("#### 🔔 Bildirimler")
+    st.markdown("####  Bildirimler")
     df_notif = load_df("SELECT * FROM bildirimler ORDER BY created_at DESC LIMIT 20")
     if not df_notif.empty:
         for _, b in df_notif.iterrows():
@@ -385,7 +385,7 @@ if page == "📊 Ana Sayfa":
 # ══════════════════════════════════════════
 # PARÇA YÖNETİMİ
 # ══════════════════════════════════════════
-elif page == "📦 Parça Yönetimi":
+elif page == " Parça Yönetimi":
     page_header("Parça Yönetimi", "Varlık ve Ar-Ge Envanteri")
 
     # Sadece Admin, Yönetici ve Mühendis ekleyebilir
@@ -415,7 +415,7 @@ elif page == "📦 Parça Yönetimi":
 
     # Arama & Filtre
     col_ara, col_f = st.columns([2,1])
-    with col_ara: ara = st.text_input("🔍 Ara", placeholder="Etiket, model, seri no...", key="p_ara")
+    with col_ara: ara = st.text_input(" Ara", placeholder="Etiket, model, seri no...", key="p_ara")
     with col_f: df_f = st.selectbox("Durum Filtrele", ["Tümü","Aktif","Arızalı","Depoda","Hurda"])
 
     df = load_df("SELECT * FROM parcalar ORDER BY id DESC")
@@ -453,7 +453,7 @@ elif page == "📦 Parça Yönetimi":
 # ══════════════════════════════════════════
 # CİHAZ YÖNETİMİ
 # ══════════════════════════════════════════
-elif page == "💻 Cihaz Yönetimi":
+elif page == " Cihaz Yönetimi":
     page_header("Cihaz Yönetimi", "Donanım İzleme")
 
     if IS_YONETICI or IS_MUHENDIS:
@@ -481,7 +481,7 @@ elif page == "💻 Cihaz Yönetimi":
         }, "cihaz", {"ekleyen": st.session_state.user_name})
 
     col_ara, col_f = st.columns([2,1])
-    with col_ara: ara = st.text_input("🔍 Ara", key="c_ara")
+    with col_ara: ara = st.text_input(" Ara", key="c_ara")
     with col_f: df_f = st.selectbox("Durum", ["Tümü","Aktif","Testte","Bakımda","Depoda"])
 
     df = load_df("SELECT * FROM cihazlar ORDER BY id DESC")
@@ -507,7 +507,7 @@ elif page == "💻 Cihaz Yönetimi":
 # ══════════════════════════════════════════
 # KURUMSAL BÜTÇE
 # ══════════════════════════════════════════
-elif page == "💰 Kurumsal Bütçe":
+elif page == " Kurumsal Bütçe":
     page_header("Kurumsal Bütçe", "Şirket Harcamaları")
 
     # Döviz Kuru Bilgisi
@@ -584,7 +584,7 @@ elif page == "💰 Kurumsal Bütçe":
 
         # Filtre
         col_ara, col_f = st.columns([2,1])
-        with col_ara: ara = st.text_input("🔍 Ara", key="h_ara")
+        with col_ara: ara = st.text_input(" Ara", key="h_ara")
         with col_f: kat_f = st.selectbox("Kategori", ["Tümü","Ar-Ge Alımı","Ofis Gideri","Seyahat","Maaş","Diğer"])
         if ara: df = df[df.apply(lambda r: ara.lower() in str(r).lower(), axis=1)]
         if kat_f != "Tümü": df = df[df["kategori"] == kat_f]
@@ -609,7 +609,7 @@ elif page == "💰 Kurumsal Bütçe":
 # ══════════════════════════════════════════
 # MASRAF BEYANI
 # ══════════════════════════════════════════
-elif page == "🧾 Masraf Beyanı":
+elif page == " Masraf Beyanı":
     page_header("Masraf Beyanı", "Bireysel Harcama İade Talebi")
     is_yon = IS_YONETICI
     tab1, tab2 = st.tabs(["📤 Talebim", "🗂️ Yönetim Paneli"])
@@ -718,13 +718,13 @@ elif page == "🧾 Masraf Beyanı":
 
                     elif r["durum"] == "Onaylandı":
                         dekont_f = st.file_uploader("Dekont Yükle", type=["jpg","jpeg","png","pdf"], key=f"dek_{r['id']}")
-                        if dekont_f and st.button("💰 Ödendi Olarak İşaretle", key=f"ode_{r['id']}"):
+                        if dekont_f and st.button(" Ödendi Olarak İşaretle", key=f"ode_{r['id']}"):
                             odeme_t = str(datetime.date.today())
                             with conn.session as s:
                                 s.execute(text("UPDATE masraf_iadeleri SET durum='Ödendi',dekont=:d,dekont_adi=:da,odeme_tarihi=:ot WHERE id=:i"),
                                           {"d": dekont_f.read(), "da": dekont_f.name, "ot": odeme_t, "i": r["id"]})
                                 s.commit()
-                            mail_gonder(r["talep_eden_email"], "Masraf İadeniz Ödendi 💰",
+                            mail_gonder(r["talep_eden_email"], "Masraf İadeniz Ödendi ",
                                 f"""<p>Merhaba <b>{r['talep_eden']}</b>,<br>
                                 <b>{r['tutar']:,.2f}₺</b> tutarındaki masraf iadeniz ödendi.<br>
                                 Ödeme Tarihi: <b>{odeme_t}</b></p>""")
@@ -741,7 +741,7 @@ elif page == "🧾 Masraf Beyanı":
 # ══════════════════════════════════════════
 # GÖREVLER
 # ══════════════════════════════════════════
-elif page == "📋 Görevler":
+elif page == " Görevler":
     page_header("Proje & Görev Takibi", "Kanban Board")
     with st.expander("➕ Yeni Görev", expanded=False):
         with st.form("g_form", clear_on_submit=True):
@@ -778,7 +778,7 @@ elif page == "📋 Görevler":
                                 border-left:4px solid {r};box-shadow:0 1px 4px rgba(0,0,0,0.08)'>
                         <div style='font-weight:600;font-size:0.88rem;'>{g['baslik']}</div>
                         <div style='font-size:0.75rem;color:#64748b;margin-top:4px;'>
-                            👤 {g['atanan'] or '—'} | 📅 {str(g['son_tarih'])[:10] if g['son_tarih'] else '—'}
+                             {g['atanan'] or '—'} |  {str(g['son_tarih'])[:10] if g['son_tarih'] else '—'}
                         </div>
                     </div>""", unsafe_allow_html=True)
         st.markdown("---")
@@ -800,7 +800,7 @@ elif page == "📋 Görevler":
 # ══════════════════════════════════════════
 # PERSONEL
 # ══════════════════════════════════════════
-elif page == "👥 Personel":
+elif page == " Personel":
     page_header("İnsan Kaynakları", "Personel Listesi")
     with st.expander("➕ Yeni Personel Ekle", expanded=False):
         with st.form("per_form", clear_on_submit=True):
@@ -878,11 +878,11 @@ elif page == "✅ Onay Paneli":
 # ══════════════════════════════════════════
 # AUDİT LOG
 # ══════════════════════════════════════════
-elif page == "🛡️ Audit Log":
+elif page == " Audit Log":
     page_header("Audit Log", "Sistem İşlem Geçmişi")
     df = load_df("SELECT * FROM audit_log ORDER BY id DESC LIMIT 500")
     if not df.empty:
-        ara = st.text_input("🔍 Ara")
+        ara = st.text_input(" Ara")
         if ara: df = df[df.apply(lambda r: ara.lower() in str(r).lower(), axis=1)]
         disp = df.drop(columns=["id"], errors="ignore")
         st.dataframe(disp, use_container_width=True, hide_index=True)
@@ -894,7 +894,7 @@ elif page == "🛡️ Audit Log":
 # ══════════════════════════════════════════
 # YETKİLER
 # ══════════════════════════════════════════
-elif page == "🔑 Yetkiler":
+elif page == " Yetkiler":
     page_header("Yetkilendirme", "Kullanıcı Rol Yönetimi")
     df = load_df("SELECT id, email, isim, rol FROM kullanicilar ORDER BY id")
     if not df.empty:
@@ -915,7 +915,7 @@ elif page == "🔑 Yetkiler":
 # ══════════════════════════════════════════
 # AYARLAR
 # ══════════════════════════════════════════
-elif page == "⚙️ Ayarlar":
+elif page == " Ayarlar":
     page_header("Ayarlar", "Profil & Şifre Yönetimi")
     st.markdown(f"**İsim:** {st.session_state.user_name}")
     st.markdown(f"**E-posta:** {st.session_state.user_email}")
