@@ -96,6 +96,12 @@ def excel_export(df):
 def page_header(title, desc):
     st.markdown(f'<div class="page-header"><h2>{title}</h2><p>{desc}</p></div>', unsafe_allow_html=True)
 
+def to_datetime_safe(value):
+    try:
+        return pd.to_datetime(value, errors="coerce")
+    except Exception:
+        return pd.NaT
+
 def excel_import_bolumu(table, col_map, key, ekstra_cols=None):
     with st.expander("Excel'den Veri Aktar", expanded=False):
         sablon = pd.DataFrame(columns=list(col_map.keys()))
@@ -339,6 +345,16 @@ if page == "Ana Sayfa":
     masraf_bekleyen = load_df("SELECT COUNT(*) as n FROM masraf_iadeleri WHERE durum='Bekliyor'").iloc[0,0]
     c5.metric("Masraf Bekleyen", masraf_bekleyen)
 
+    df_gecikme = load_df("SELECT son_tarih, durum FROM gorevler WHERE durum!='Tamamlandı'")
+    bugun = pd.Timestamp.today().normalize()
+    if not df_gecikme.empty and "son_tarih" in df_gecikme.columns:
+        son_tarihler = pd.to_datetime(df_gecikme["son_tarih"], errors="coerce")
+        geciken = int(((son_tarihler < bugun) & son_tarihler.notna()).sum())
+    else:
+        geciken = 0
+    if geciken > 0:
+        st.warning(f"Geciken gorev sayisi: {geciken}")
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Grafikler
@@ -381,6 +397,13 @@ if page == "Ana Sayfa":
             st.rerun()
     else:
         st.success("Bildirim yok, her sey yolunda.")
+
+    st.markdown("#### Son Islemler")
+    df_recent = load_df("SELECT kullanici, aksiyon, detay, created_at FROM audit_log ORDER BY id DESC LIMIT 10")
+    if not df_recent.empty:
+        st.dataframe(df_recent, use_container_width=True, hide_index=True)
+    else:
+        st.info("Islem gecmisi henuz olusmadi.")
 
 # ══════════════════════════════════════════
 # PARÇA YÖNETİMİ
@@ -444,6 +467,17 @@ elif page == "Parca Yonetimi":
         st.download_button("Excel Indir", excel_export(disp), "parcalar.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+        if IS_YONETICI or IS_MUHENDIS:
+            with st.expander("Durum Guncelle"):
+                guncel_id = st.selectbox("Parca ID", df["id"].tolist(), key="p_guncel_id")
+                yeni_durum = st.selectbox("Yeni Durum", ["Aktif","Arızalı","Depoda","Hurda"], key="p_guncel_durum")
+                if st.button("Durumu Guncelle", key="p_guncel_btn"):
+                    with conn.session as s:
+                        s.execute(text("UPDATE parcalar SET durum=:d WHERE id=:i"), {"d": yeni_durum, "i": guncel_id})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Parca Durumu Guncellendi", f"ID:{guncel_id} -> {yeni_durum}")
+                    islem_basarili("Parca durumu guncellendi.")
+
         # Silme — sadece Admin ve Yönetici
         if IS_YONETICI or IS_MUHENDIS:
             with st.expander("Kayit Sil"):
@@ -506,6 +540,18 @@ elif page == "Cihaz Yonetimi":
         st.dataframe(disp, use_container_width=True, hide_index=True)
         st.download_button("Excel Indir", excel_export(disp), "cihazlar.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        if IS_YONETICI or IS_MUHENDIS:
+            with st.expander("Durum Guncelle"):
+                guncel_id = st.selectbox("Cihaz ID", df["id"].tolist(), key="c_guncel_id")
+                yeni_durum = st.selectbox("Yeni Durum", ["Aktif","Testte","Bakımda","Depoda"], key="c_guncel_durum")
+                if st.button("Durumu Guncelle", key="c_guncel_btn"):
+                    with conn.session as s:
+                        s.execute(text("UPDATE cihazlar SET durum=:d WHERE id=:i"), {"d": yeni_durum, "i": guncel_id})
+                        s.commit()
+                    log_action(st.session_state.user_name, "Cihaz Durumu Guncellendi", f"ID:{guncel_id} -> {yeni_durum}")
+                    islem_basarili("Cihaz durumu guncellendi.")
+
         if IS_YONETICI or IS_MUHENDIS:
             with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Cihaz ID", df["id"].tolist(), key="c_sil")
@@ -818,6 +864,12 @@ elif page == "Gorevler":
 
     df = load_df("SELECT * FROM gorevler ORDER BY id DESC")
     if not df.empty:
+        bugun = pd.Timestamp.today().normalize()
+        son_tarihler = pd.to_datetime(df["son_tarih"], errors="coerce") if "son_tarih" in df.columns else pd.Series(dtype="datetime64[ns]")
+        geciken = int(((son_tarihler < bugun) & son_tarihler.notna() & (df["durum"] != "Tamamlandı")).sum())
+        if geciken > 0:
+            st.warning(f"Geciken gorev: {geciken}")
+
         st.markdown("#### Kanban")
         renk = {"Düşük":"#22c55e","Orta":"#f59e0b","Yüksek":"#ef4444","Kritik":"#7c3aed"}
         k_cols = st.columns(4)
@@ -839,6 +891,15 @@ elif page == "Gorevler":
         st.dataframe(disp, use_container_width=True, hide_index=True)
         st.download_button("Excel Indir", excel_export(disp), "gorevler.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        with st.expander("Gorev Durumu Guncelle"):
+            g_id = st.selectbox("Gorev ID", df["id"].tolist(), key="g_update_id")
+            g_durum = st.selectbox("Yeni Durum", ["Bekliyor","Devam Ediyor","İncelemede","Tamamlandı"], key="g_update_durum")
+            if st.button("Guncelle", key="g_update_btn"):
+                with conn.session as s:
+                    s.execute(text("UPDATE gorevler SET durum=:d WHERE id=:i"), {"d": g_durum, "i": g_id})
+                    s.commit()
+                log_action(st.session_state.user_name, "Gorev Durumu Guncellendi", f"ID:{g_id} -> {g_durum}")
+                islem_basarili("Gorev durumu guncellendi.")
         if IS_YONETICI:
             with st.expander("Kayit Sil"):
                 sil_id = st.selectbox("Silinecek Görev ID", df["id"].tolist(), key="g_sil")
