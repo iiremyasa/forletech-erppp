@@ -866,7 +866,7 @@ elif page == "🛡️ Audit Log":
 # ══════════════════════════════════════════
 elif page == "🔑 Yetkiler":
     page_header("Yetkilendirme", "Kullanıcı Rol Yönetimi")
-    df = load_df("SELECT id, email, isim, rol, created_at FROM kullanicilar ORDER BY id")
+    df = load_df("SELECT id, email, isim, rol FROM kullanicilar ORDER BY id")
     if not df.empty:
         st.dataframe(df, use_container_width=True, hide_index=True)
         st.markdown("---")
