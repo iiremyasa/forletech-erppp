@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from sqlalchemy import text
 
-st.set_page_config(page_title="FORLE TECH | ERP Portal", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="FORLE TECH | ERP Portal", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
